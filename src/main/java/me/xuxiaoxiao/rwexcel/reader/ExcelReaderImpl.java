@@ -56,10 +56,11 @@ public class ExcelReaderImpl implements ExcelReader {
                 int sheetIndex = -1;
                 while (iterator.hasNext()) {
                     try (InputStream stream = iterator.next()) {
-                        listener.onSheet(new ExcelSheet(sheetIndex, iterator.getSheetName()));
+                        ExcelSheet sheet = new ExcelSheet(++sheetIndex, iterator.getSheetName());
+                        listener.onSheetStart(sheet);
 
                         XMLReader sheetParser = SAXHelper.newXMLReader();
-                        sheetParser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), reader.getSharedStringsTable(), new XlsxScanner(sheetIndex, listener), new DataFormatter(), false));
+                        sheetParser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), reader.getSharedStringsTable(), new XlsxScanner(sheet, listener), new DataFormatter(), false));
                         sheetParser.parse(new InputSource(stream));
                     }
                 }
@@ -81,7 +82,7 @@ public class ExcelReaderImpl implements ExcelReader {
         /**
          * 当前sheet
          */
-        private int sheetIndex = -1;
+        private ExcelSheet sheet;
         private BoundSheetRecord[] orderedBSRs;
         private List<BoundSheetRecord> boundSheetRecords = new ArrayList<>();
 
@@ -133,15 +134,16 @@ public class ExcelReaderImpl implements ExcelReader {
                 }
                 if (colFirst >= 0 && colLast >= colFirst) {
                     //仍然有非空单元格
-                    ExcelRow excelRow = new ExcelRow(sheetIndex, rowIndex);
+                    ExcelRow excelRow = new ExcelRow(this.sheet.getShtIndex(), rowIndex);
                     excelRow.setColFirst(colFirst);
                     excelRow.setColLast(colLast);
-                    listener.onRow(excelRow);
-                    for (int i = 0; i <= colLast - colFirst; i++) {
-                        if (valList.get(i) != null) {
-                            listener.onCell(new ExcelCell(sheetIndex, rowIndex, i + colFirst, valList.get(i)));
+                    List<ExcelCell> cells = new LinkedList<>();
+                    for (int i = colFirst; i <= colLast; i++) {
+                        if (valList.get(i - colFirst) != null) {
+                            cells.add(new ExcelCell(this.sheet.getShtIndex(), rowIndex, i, valList.get(i - colFirst)));
                         }
                     }
+                    listener.onRow(excelRow, cells);
                 }
             }
             rowIndex = -1;
@@ -215,14 +217,18 @@ public class ExcelReaderImpl implements ExcelReader {
                     case BOFRecord.sid:
                         BOFRecord bofRecord = (BOFRecord) record;
                         if (bofRecord.getType() == BOFRecord.TYPE_WORKSHEET) {
-                            sheetIndex++;
                             if (orderedBSRs == null) {
                                 orderedBSRs = BoundSheetRecord.orderByBofPosition(boundSheetRecords);
+                            }
+                            if (this.sheet == null) {
+                                this.sheet = new ExcelSheet(0, orderedBSRs[0].getSheetname());
+                            } else {
+                                this.sheet = new ExcelSheet(this.sheet.getShtIndex() + 1, orderedBSRs[this.sheet.getShtIndex() + 1].getSheetname());
                             }
                             rowIndex = -1;
                             colFirst = -1;
                             colLast = -1;
-                            listener.onSheet(new ExcelSheet(sheetIndex, orderedBSRs[sheetIndex].getSheetname()));
+                            listener.onSheetStart(this.sheet);
                         }
                         break;
                     case SSTRecord.sid:
@@ -235,6 +241,11 @@ public class ExcelReaderImpl implements ExcelReader {
                             handleNextStringRecord = false;
                         }
                         break;
+                    case EOFRecord.sid:
+                        if (this.sheet != null) {
+                            listener.onSheetEnd(this.sheet);
+                        }
+                        break;
                 }
             }
             if (record instanceof LastCellOfRowDummyRecord) {
@@ -244,14 +255,14 @@ public class ExcelReaderImpl implements ExcelReader {
     }
 
     public static class XlsxScanner implements XSSFSheetXMLHandler.SheetContentsHandler {
-        private final int sheetIndex;
+        private final ExcelSheet sheet;
         private final Listener listener;
 
         private int colFirst = -1, colLast = -1;
         private List<String> valList = new LinkedList<>();
 
-        public XlsxScanner(int sheetIndex, Listener listener) {
-            this.sheetIndex = sheetIndex;
+        public XlsxScanner(ExcelSheet sheet, Listener listener) {
+            this.sheet = sheet;
             this.listener = listener;
         }
 
@@ -262,15 +273,16 @@ public class ExcelReaderImpl implements ExcelReader {
         @Override
         public void endRow(int rowNum) {
             if (colFirst >= 0 && colLast >= colFirst) {
-                ExcelRow excelRow = new ExcelRow(sheetIndex, rowNum);
+                ExcelRow excelRow = new ExcelRow(this.sheet.getShtIndex(), rowNum);
                 excelRow.setColFirst(colFirst);
                 excelRow.setColLast(colLast);
-                listener.onRow(excelRow);
+                List<ExcelCell> cells = new LinkedList<>();
                 for (int i = colFirst; i <= colLast; i++) {
                     if (valList.get(i - colFirst) != null) {
-                        listener.onCell(new ExcelCell(sheetIndex, rowNum, i, valList.get(i - colFirst)));
+                        cells.add(new ExcelCell(this.sheet.getShtIndex(), rowNum, i, valList.get(i - colFirst)));
                     }
                 }
+                listener.onRow(excelRow, cells);
             }
             colFirst = -1;
             colLast = -1;
@@ -298,6 +310,7 @@ public class ExcelReaderImpl implements ExcelReader {
 
         @Override
         public void endSheet() {
+            listener.onSheetEnd(this.sheet);
         }
     }
 }

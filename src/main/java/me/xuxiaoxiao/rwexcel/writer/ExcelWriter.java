@@ -7,6 +7,7 @@ import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.OutputStream;
+import java.util.List;
 
 /**
  * Excel导出器
@@ -41,30 +42,31 @@ public interface ExcelWriter {
         Type version();
 
         /**
-         * 是否还有sheet数据
+         * 所有sheets信息
          *
-         * @param lastShtIndex 上一个sheet的序号，初始为-1
-         * @return 为null则结束excel写出，不为null则继续写出新的sheet
+         * @return 所有sheets信息
          */
-        @Nullable
-        ExcelSheet nextSheet(int lastShtIndex);
+        @Nonnull
+        ExcelSheet[] sheets();
 
         /**
          * 是否还有row数据
          *
-         * @param shtIndex     当前sheet序号
+         * @param sheet        当前sheet
          * @param lastRowIndex 上一个row的序号，初始为-1
          * @return 为null则结束当前sheet写出，不为null则继续写出新的row
          */
         @Nullable
-        ExcelRow nextRow(int shtIndex, int lastRowIndex);
+        ExcelRow provideRow(ExcelSheet sheet, int lastRowIndex);
 
         /**
          * 为特定位置的cell提供数据
          *
+         * @param sheet 当前sheet
+         * @param row   当前row
          * @return 为null则写出空白单元格，不为null则继续写出数据
          */
-        @Nullable
-        ExcelCell provideCell(int shtIndex, int rowIndex, int colIndex);
+        @Nonnull
+        List<ExcelCell> provideCells(ExcelSheet sheet, ExcelRow row);
     }
 }

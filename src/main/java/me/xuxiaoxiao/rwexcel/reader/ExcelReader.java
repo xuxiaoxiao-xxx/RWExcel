@@ -6,6 +6,7 @@ import me.xuxiaoxiao.rwexcel.ExcelSheet;
 
 import javax.annotation.Nonnull;
 import java.io.InputStream;
+import java.util.List;
 
 /**
  * Excel解析类
@@ -35,31 +36,22 @@ public interface ExcelReader {
          *
          * @param sheet sheet信息
          */
-        void onSheet(@Nonnull ExcelSheet sheet);
+        void onSheetStart(@Nonnull ExcelSheet sheet);
 
         /**
          * 处理行
          * <ul>
-         *     <li>保证按顺序处理行，行号小的先处理</li>
-         *     <li>不保证连续，遇到空行会跳过</li>
+         *     <li>保证按顺序处理行，行号小的先处理，列号小的先处理</li>
+         *     <li>不保证连续，遇到空行会跳过，遇到空单元格（BlankRecord）会跳过</li>
          *     <li>行内保证至少有一个单元格</li>
-         * </ul>
-         *
-         * @param row row信息
-         */
-        void onRow(@Nonnull ExcelRow row);
-
-        /**
-         * 处理单元格
-         * <ul>
-         *     <li>保证按顺序处理行，列号小的先处理</li>
-         *     <li>不保证连续，遇到空单元格（BlankRecord）会跳过</li>
-         *     <li>所在行内保证至少有一个单元格</li>
          *     <li>保证读取单元格的值不为null</li>
          * </ul>
          *
-         * @param cell cell信息
+         * @param row   row信息
+         * @param cells cells信息
          */
-        void onCell(@Nonnull ExcelCell cell);
+        void onRow(@Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells);
+
+        void onSheetEnd(@Nonnull ExcelSheet sheet);
     }
 }
