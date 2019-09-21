@@ -30,10 +30,12 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
     private final Class<T> clazz;
     private final boolean adaptive;
 
-    protected final Converter converter = new Converter();
-    protected final TreeMap<Integer, Field> mapper = new TreeMap<>();
-
     private int rowStart = -1, rowEnd = -1;
+
+    protected final Converter converter = new Converter();
+    protected final TreeMap<Integer, Field> fMapper = new TreeMap<>();
+    protected final TreeMap<Integer, Converter> cMapper = new TreeMap<>();
+
 
     public SimpleSheetListener(ExcelSheet sheet) {
         this(sheet, 100);
@@ -55,10 +57,10 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                     ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
                     if (excelColumn.index() >= 0) {
                         adaptive = false;
-                        if (mapper.containsKey(excelColumn.index())) {
+                        if (fMapper.containsKey(excelColumn.index())) {
                             throw new IllegalArgumentException(String.format("ExcelColumn列冲突，有多个序号为 %d 的列", excelColumn.index()));
                         } else {
-                            mapper.put(excelColumn.index(), field);
+                            fMapper.put(excelColumn.index(), field);
                         }
                     } else if (!adaptive) {
                         throw new IllegalArgumentException(String.format("ExcelColumn的列 %s 未设置序号", excelColumn.value()));
@@ -120,7 +122,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
             if (listenerClass.getGenericSuperclass() instanceof ParameterizedType) {
                 Type[] typeArguments = ((ParameterizedType) listenerClass.getGenericSuperclass()).getActualTypeArguments();
                 if (typeArguments != null && typeArguments.length > 0) {
-                    java.lang.reflect.Type paramType = typeArguments[0];
+                    Type paramType = typeArguments[0];
                     if (paramType instanceof Class) {
                         return (Class<T>) paramType;
                     }
@@ -134,7 +136,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
 
     @Nullable
     protected Field entityField(int rowIndex, int colIndex) {
-        return mapper.get(colIndex);
+        return fMapper.get(colIndex);
     }
 
     protected boolean rowSkip(int shtIndex, int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
@@ -149,10 +151,10 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                         ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
                         for (ExcelCell cell : cells) {
                             if (excelColumn.value().equals(cell.getStrValue())) {
-                                if (mapper.containsKey(cell.getColIndex())) {
+                                if (fMapper.containsKey(cell.getColIndex())) {
                                     throw new IllegalArgumentException(String.format("ExcelColumn自动寻列冲突，有多个成员域title为 %s", excelColumn.value()));
                                 } else {
-                                    mapper.put(cell.getColIndex(), field);
+                                    fMapper.put(cell.getColIndex(), field);
                                     break;
                                 }
                             }
@@ -176,7 +178,12 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                     if (Converter.class.equals(cClass)) {
                         field.set(entity, converter.str2obj(field, cell.getStrValue()));
                     } else {
-                        field.set(entity, cClass.newInstance().str2obj(field, cell.getStrValue()));
+                        Converter converter = cMapper.get(cell.getColIndex());
+                        if (converter == null) {
+                            converter = cClass.newInstance();
+                            cMapper.put(cell.getColIndex(), converter);
+                        }
+                        field.set(entity, converter.str2obj(field, cell.getStrValue()));
                     }
                 }
             }

@@ -39,7 +39,7 @@ public class SimpleExcelListenerTest {
     @Test
     public void sheetListener() throws Exception {
         ExcelReader reader = new ExcelReaderImpl();
-        reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("test.xls")), new SimpleExcelListener() {
+        reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("test.xlsx")), new SimpleExcelListener() {
 
             @Override
             public SimpleSheetListener<?> sheetListener(ExcelSheet sheet) {

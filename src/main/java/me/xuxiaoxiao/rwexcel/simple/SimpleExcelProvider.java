@@ -31,7 +31,7 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
     @Nonnull
     @Override
     public ExcelSheet[] sheets() {
-        return new ExcelSheet[1];
+        return new ExcelSheet[]{new ExcelSheet(0, "sheet1")};
     }
 
     @Nullable

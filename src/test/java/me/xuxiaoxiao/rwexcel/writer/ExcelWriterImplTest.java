@@ -16,11 +16,11 @@ public class ExcelWriterImplTest {
     @Test
     public void write() throws Exception {
         ExcelWriter excelWriter = new ExcelWriterImpl();
-        excelWriter.write(new FileOutputStream("test.xls"), new ExcelWriter.Provider() {
+        excelWriter.write(new FileOutputStream("test.xlsx"), new ExcelWriter.Provider() {
             @Nonnull
             @Override
             public ExcelWriter.Type version() {
-                return ExcelWriter.Type.XLS;
+                return ExcelWriter.Type.XLSX;
             }
 
             @Nonnull

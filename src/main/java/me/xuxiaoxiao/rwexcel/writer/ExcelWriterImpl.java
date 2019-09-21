@@ -76,5 +76,8 @@ public class ExcelWriterImpl implements ExcelWriter {
         if (workbook instanceof SXSSFWorkbook) {
             ((SXSSFWorkbook) workbook).dispose();
         }
+        outStream.flush();
+        outStream.close();
+        workbook.close();
     }
 }
