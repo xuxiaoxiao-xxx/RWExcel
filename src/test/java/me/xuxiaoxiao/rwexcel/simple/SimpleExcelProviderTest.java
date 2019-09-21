@@ -21,9 +21,10 @@ public class SimpleExcelProviderTest {
         excelWriter.write(new FileOutputStream("test.xls"), new SimpleExcelProvider() {
             @Nonnull
             @Override
-            public ExcelWriter.Type version() {
-                return ExcelWriter.Type.XLS;
+            public ExcelWriter.Version version() {
+                return ExcelWriter.Version.XLS;
             }
+
 
             @Override
             public SimpleSheetProvider<Entity> sheetProvider(ExcelSheet sheet) {
@@ -31,7 +32,7 @@ public class SimpleExcelProviderTest {
                 return new SimpleSheetProvider<Entity>(sheet) {
 
                     @Override
-                    public List<Entity> queryList(ExcelSheet sheet, int lastRowIndex) {
+                    public List<Entity> queryList(int lastRowIndex) {
                         List<Entity> entities = new ArrayList<>(100);
                         Entity entity1 = new Entity();
                         entity1.colA = "str";

@@ -22,7 +22,7 @@ public class ExcelWriterImpl implements ExcelWriter {
 
     @Override
     public void write(@Nonnull OutputStream outStream, @Nonnull Provider provider) throws Exception {
-        Workbook workbook = provider.version() == Type.XLS ? new HSSFWorkbook() : new SXSSFWorkbook(100);
+        Workbook workbook = provider.version() == Version.XLS ? new HSSFWorkbook() : new SXSSFWorkbook(100);
 
         ExcelSheet[] excelSheets = provider.sheets();
         for (int i = 0; i < excelSheets.length; i++) {
@@ -76,8 +76,7 @@ public class ExcelWriterImpl implements ExcelWriter {
         if (workbook instanceof SXSSFWorkbook) {
             ((SXSSFWorkbook) workbook).dispose();
         }
-        outStream.flush();
-        outStream.close();
         workbook.close();
+        outStream.close();
     }
 }

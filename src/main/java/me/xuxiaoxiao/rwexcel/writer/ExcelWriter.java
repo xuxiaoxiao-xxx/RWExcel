@@ -19,27 +19,39 @@ import java.util.List;
  */
 public interface ExcelWriter {
     /**
-     * 流式写出excel 03或07版本
+     * 流式导出excel 03或07版本，自动关闭输出流
      *
      * @param outStream excel文件输出流
-     * @param provider  流式写出数据源
-     * @throws Exception 写出中发生的异常
+     * @param provider  流式导出数据源
+     * @throws Exception 导出中发生的异常
      */
     void write(@Nonnull OutputStream outStream, @Nonnull Provider provider) throws Exception;
 
-    enum Type {XLS, XLSX}
+    /**
+     * 导出的excel版本
+     */
+    enum Version {
+        /**
+         * 03版本的Excel，虚拟流式导出
+         */
+        XLS,
+        /**
+         * 07版本的Excel，真实流式导出
+         */
+        XLSX
+    }
 
     /**
-     * 流式写出数据源
+     * 流式导出数据源
      */
     interface Provider {
         /**
-         * 写出的excel版本
+         * 导出的excel版本
          *
          * @return excel版本
          */
         @Nonnull
-        Type version();
+        Version version();
 
         /**
          * 所有sheets信息
@@ -57,16 +69,16 @@ public interface ExcelWriter {
          * @return 为null则结束当前sheet写出，不为null则继续写出新的row
          */
         @Nullable
-        ExcelRow provideRow(ExcelSheet sheet, int lastRowIndex);
+        ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex);
 
         /**
-         * 为特定位置的cell提供数据
+         * 提供某行的所有单元格，必须按顺序，可以不连续
          *
          * @param sheet 当前sheet
          * @param row   当前row
-         * @return 为null则写出空白单元格，不为null则继续写出数据
+         * @return 某行的所有单元格
          */
         @Nonnull
-        List<ExcelCell> provideCells(ExcelSheet sheet, ExcelRow row);
+        List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row);
     }
 }

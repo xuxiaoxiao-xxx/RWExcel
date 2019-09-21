@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 请填写类的描述
+ * 简单Excel导出数据源
  * <ul>
  * <li>[2019/9/20 13:33]XXX：初始创建</li>
  * </ul>
@@ -24,8 +24,8 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
 
     @Nonnull
     @Override
-    public ExcelWriter.Type version() {
-        return ExcelWriter.Type.XLSX;
+    public ExcelWriter.Version version() {
+        return ExcelWriter.Version.XLSX;
     }
 
     @Nonnull
@@ -36,7 +36,7 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
 
     @Nullable
     @Override
-    public final ExcelRow provideRow(ExcelSheet sheet, int lastRowIndex) {
+    public final ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
         while (sheet.getShtIndex() >= this.providers.size()) {
             this.providers.add(sheetProvider(sheet));
         }
@@ -50,7 +50,7 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
 
     @Nonnull
     @Override
-    public final List<ExcelCell> provideCells(ExcelSheet sheet, ExcelRow row) {
+    public final List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
         SimpleSheetProvider<?> sheetProvider = this.providers.get(sheet.getShtIndex());
         if (sheetProvider != null) {
             return sheetProvider.provideCells(sheet, row);
@@ -59,5 +59,12 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
         }
     }
 
+    /**
+     * 获取对应sheet的数据源
+     *
+     * @param sheet sheet信息
+     * @return 对应sheet的数据源
+     */
+    @Nullable
     public abstract SimpleSheetProvider<?> sheetProvider(ExcelSheet sheet);
 }

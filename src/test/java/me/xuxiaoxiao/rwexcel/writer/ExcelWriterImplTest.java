@@ -3,55 +3,98 @@ package me.xuxiaoxiao.rwexcel.writer;
 import me.xuxiaoxiao.rwexcel.ExcelCell;
 import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
+import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
+import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImpl;
+import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImplTest;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.FileOutputStream;
-import java.util.Collections;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.LinkedList;
 import java.util.List;
 
 public class ExcelWriterImplTest {
 
     @Test
-    public void write() throws Exception {
+    public void writeXls() throws Exception {
+        ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
+
         ExcelWriter excelWriter = new ExcelWriterImpl();
-        excelWriter.write(new FileOutputStream("test.xlsx"), new ExcelWriter.Provider() {
-            @Nonnull
-            @Override
-            public ExcelWriter.Type version() {
-                return ExcelWriter.Type.XLSX;
-            }
+        excelWriter.write(baOutStream, new TestProvider(ExcelWriter.Version.XLS));
 
-            @Nonnull
-            @Override
-            public ExcelSheet[] sheets() {
-                return new ExcelSheet[]{new ExcelSheet(0, "测试sheet")};
-            }
+        ExcelReader excelReader = new ExcelReaderImpl();
+        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new ExcelReaderImplTest.TestListener());
+    }
 
-            @Nullable
-            @Override
-            public ExcelRow provideRow(ExcelSheet sheet, int lastRowIndex) {
-                if (lastRowIndex == -1) {
-                    ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), 0);
-                    excelRow.setColFirst(1);
-                    excelRow.setColLast(3);
-                    return excelRow;
-                } else if (lastRowIndex == 0) {
-                    ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), 3);
-                    excelRow.setColFirst(1);
-                    excelRow.setColLast(4);
-                    return excelRow;
+    public static final class TestProvider implements ExcelWriter.Provider {
+        private ExcelWriter.Version version;
+
+        public TestProvider(@Nonnull ExcelWriter.Version version) {
+            this.version = version;
+        }
+
+        @Nonnull
+        @Override
+        public ExcelWriter.Version version() {
+            return this.version;
+        }
+
+        @Nonnull
+        @Override
+        public ExcelSheet[] sheets() {
+            return new ExcelSheet[]{new ExcelSheet(0, "Sheet1"), new ExcelSheet(1, "Sheet2")};
+        }
+
+        @Nullable
+        @Override
+        public ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
+            if (sheet.getShtIndex() == 0 && lastRowIndex < 12) {
+                ExcelRow row = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
+                if (lastRowIndex < 6) {
+                    row.setColFirst(0);
+                    row.setColLast(row.getRowIndex());
                 } else {
-                    return null;
+                    row.setColFirst(row.getRowIndex() - 6);
+                    row.setColLast(6);
+                }
+                System.out.println("创建row：shtIndex=" + sheet.getShtIndex() + ",rowIndex=" + row.getRowIndex() + "，colFirst=" + row.getColFirst() + "，colLast=" + row.getColLast());
+                return row;
+            } else if (sheet.getShtIndex() == 1 && lastRowIndex < 4) {
+                ExcelRow row = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
+                if (lastRowIndex < 2) {
+                    row.setColFirst(0);
+                    row.setColLast(row.getRowIndex());
+                } else {
+                    row.setColFirst(row.getRowIndex() - 2);
+                    row.setColLast(2);
+                }
+                System.out.println("创建row：shtIndex=" + sheet.getShtIndex() + ",rowIndex=" + row.getRowIndex() + "，colFirst=" + row.getColFirst() + "，colLast=" + row.getColLast());
+                return row;
+            } else {
+                return null;
+            }
+        }
+
+        @Nonnull
+        @Override
+        public List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
+            List<ExcelCell> cells = new LinkedList<>();
+            if (sheet.getShtIndex() == 0) {
+                for (int i = row.getColFirst(); i <= row.getColLast(); i++) {
+                    ExcelCell cell = new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), i, (char) ('A' + i) + "" + (row.getRowIndex() + 1));
+                    System.out.println("colIndex=" + cell.getColIndex() + "，strValue=" + cell.getStrValue());
+                    cells.add(cell);
+                }
+            } else {
+                for (int i = row.getColFirst(); i <= row.getColLast(); i++) {
+                    ExcelCell cell = new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), i, (row.getRowIndex() + 1) + "" + (char) ('A' + i));
+                    System.out.println("colIndex=" + cell.getColIndex() + "，strValue=" + cell.getStrValue());
+                    cells.add(cell);
                 }
             }
-
-            @Nonnull
-            @Override
-            public List<ExcelCell> provideCells(ExcelSheet sheet, ExcelRow row) {
-                return Collections.singletonList(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), 0, "row=" + row.getRowIndex() + ",col=0"));
-            }
-        });
+            return cells;
+        }
     }
 }

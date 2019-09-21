@@ -1,5 +1,6 @@
 package me.xuxiaoxiao.rwexcel.simple;
 
+import lombok.Getter;
 import me.xuxiaoxiao.rwexcel.ExcelCell;
 import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
@@ -14,7 +15,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 /**
- * 请填写类的描述
+ * 简单Sheet数据源，将List转换成sheet数据
  * <ul>
  * <li>[2019/9/20 13:33]XXX：初始创建</li>
  * </ul>
@@ -22,15 +23,22 @@ import java.util.*;
  * @author XXX
  */
 public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
-    private final ExcelSheet sheet;
-    protected final int colFirst, colLast;
     private final List<T> list = new LinkedList<>();
-    protected final Converter converter = new Converter();
-    protected final Map<Field, Integer> fMapper = new HashMap<>();
-    protected final Map<Field, Converter> cMapper = new HashMap<>();
+
+    @Getter
+    private final ExcelSheet sheet;
+    @Getter
     private final Class<T> clazz;
 
+    protected final int colFirst, colLast;
+    protected final Map<Field, Integer> fMapper = new HashMap<>();
+    protected final Map<Field, Converter> cMapper = new HashMap<>();
 
+    /**
+     * 创建一个sheet数据源
+     *
+     * @param sheet 当前sheet信息
+     */
     public SimpleSheetProvider(ExcelSheet sheet) {
         this.sheet = sheet;
         this.clazz = entityClass();
@@ -91,8 +99,8 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
 
     @Nonnull
     @Override
-    public ExcelWriter.Type version() {
-        return ExcelWriter.Type.XLSX;
+    public ExcelWriter.Version version() {
+        return ExcelWriter.Version.XLSX;
     }
 
     @Nonnull
@@ -103,26 +111,91 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
 
     @Nullable
     @Override
-    public final ExcelRow provideRow(ExcelSheet sheet, int lastRowIndex) {
-        if (list.isEmpty()) {
-            List<T> temp = queryList(this.sheet, lastRowIndex);
-            if (temp != null) {
-                this.list.addAll(temp);
-            }
-        }
-        if (list.isEmpty()) {
-            return null;
+    public final ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
+        if (lastRowIndex + 1 < titleRowCount()) {
+            return titleRow(lastRowIndex);
         } else {
-            return entityRow(sheet, lastRowIndex, list.get(0));
+            if (list.isEmpty()) {
+                List<T> temp = queryList(lastRowIndex);
+                if (temp != null) {
+                    this.list.addAll(temp);
+                }
+            }
+            while (list.size() > 0 && entitySkip(lastRowIndex, list.get(0))) {
+                list.remove(0);
+            }
+            if (list.isEmpty()) {
+                return null;
+            } else {
+                return entityRow(lastRowIndex, list.get(0));
+            }
         }
     }
 
     @Nonnull
     @Override
-    public final List<ExcelCell> provideCells(ExcelSheet sheet, ExcelRow row) {
-        return entityCells(sheet, row, list.remove(0));
+    public final List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
+        if (row.getRowIndex() < titleRowCount()) {
+            return titleCells(row);
+        } else {
+            try {
+                return entityCells(row, list.remove(0));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
+    /**
+     * 标题行数量
+     *
+     * @return 标题行数量
+     */
+    protected int titleRowCount() {
+        return 1;
+    }
+
+    /**
+     * 标题行信息
+     *
+     * @param lastRowIndex 上一个行号
+     * @return 标题行信息
+     */
+    @Nullable
+    protected ExcelRow titleRow(int lastRowIndex) {
+        ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
+        excelRow.setColFirst(this.colFirst);
+        excelRow.setColLast(this.colLast);
+        return excelRow;
+    }
+
+    /**
+     * 标题行的单元格列表
+     *
+     * @param row 标题行信息
+     * @return 标题行的单元格列表
+     */
+    @Nonnull
+    protected List<ExcelCell> titleCells(@Nonnull ExcelRow row) {
+        List<ExcelCell> cells = new LinkedList<>();
+        for (Map.Entry<Field, Integer> entry : this.fMapper.entrySet()) {
+            cells.add(new ExcelCell(this.sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), entry.getKey().getAnnotation(ExcelColumn.class).value()));
+        }
+        Collections.sort(cells, new Comparator<ExcelCell>() {
+            @Override
+            public int compare(ExcelCell o1, ExcelCell o2) {
+                return o1.getColIndex() - o2.getColIndex();
+            }
+        });
+        return cells;
+    }
+
+    /**
+     * 获取实体类的class对象
+     *
+     * @return 实体类的class对象
+     */
+    @Nonnull
     protected Class<T> entityClass() {
         if (this.clazz == null) {
             Class<?> providerClass = this.getClass();
@@ -141,35 +214,86 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
         }
     }
 
-    protected ExcelRow entityRow(ExcelSheet sheet, int lastRowIndex, T entity) {
+    /**
+     * 转换异常的处理方法
+     *
+     * @return 转换异常的处理方法
+     */
+    @Nonnull
+    public Converter.MismatchPolicy mismatchPolicy() {
+        return Converter.MismatchPolicy.Throw;
+    }
+
+    /**
+     * 是否要跳过某个实体
+     *
+     * @param lastRowIndex 上一个行号
+     * @param entity       实体信息
+     * @return 是否要跳过
+     */
+    protected boolean entitySkip(int lastRowIndex, @Nullable T entity) {
+        //跳过null实体
+        return entity == null;
+    }
+
+    /**
+     * 获取实体对应的行信息
+     *
+     * @param lastRowIndex 上一个行号
+     * @param entity       实体信息
+     * @return 实体对应的行信息
+     */
+    @Nullable
+    protected ExcelRow entityRow(int lastRowIndex, @Nullable T entity) {
         ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
         excelRow.setColFirst(this.colFirst);
         excelRow.setColLast(this.colLast);
         return excelRow;
     }
 
-    protected List<ExcelCell> entityCells(ExcelSheet sheet, ExcelRow row, T entity) {
-        List<ExcelCell> cells = new LinkedList<>();
-        for (Map.Entry<Field, Integer> entry : this.fMapper.entrySet()) {
-            try {
+    /**
+     * 获取实体对应的单元格列表
+     *
+     * @param row    实体对应的行信息
+     * @param entity 实体信息
+     * @return 实体对应的单元格列表
+     */
+    @Nonnull
+    protected List<ExcelCell> entityCells(@Nonnull ExcelRow row, @Nullable T entity) throws Exception {
+        if (entity == null) {
+            return new LinkedList<>();
+        } else {
+            List<ExcelCell> cells = new LinkedList<>();
+            for (Map.Entry<Field, Integer> entry : this.fMapper.entrySet()) {
                 Field field = entry.getKey();
-                Class<? extends Converter> cClass = field.getAnnotation(ExcelColumn.class).converter();
-                if (cClass.equals(Converter.class)) {
-                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), converter.obj2str(field, field.get(entity))));
-                } else {
-                    Converter converter = cMapper.get(field);
-                    if (converter == null) {
-                        converter = cClass.newInstance();
-                        cMapper.put(field, converter);
-                    }
-                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), converter.obj2str(field, field.get(entity))));
+                Converter converter = cMapper.get(field);
+                if (converter == null) {
+                    converter = field.getAnnotation(ExcelColumn.class).converter().newInstance();
+                    cMapper.put(field, converter);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+                try {
+                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), converter.obj2str(field, field.get(entity))));
+                } catch (Exception e) {
+                    if (mismatchPolicy() == Converter.MismatchPolicy.Throw) {
+                        throw e;
+                    }
+                }
             }
+            Collections.sort(cells, new Comparator<ExcelCell>() {
+                @Override
+                public int compare(ExcelCell o1, ExcelCell o2) {
+                    return o1.getColIndex() - o2.getColIndex();
+                }
+            });
+            return cells;
         }
-        return cells;
     }
 
-    public abstract List<T> queryList(ExcelSheet sheet, int lastRowIndex);
+    /**
+     * 查询实体列表，进行一个批次的处理，会调用多次
+     *
+     * @param lastRowIndex 最后一行的行号，首次为-1
+     * @return 一批次的实体列表
+     */
+    public abstract List<T> queryList(int lastRowIndex);
 }

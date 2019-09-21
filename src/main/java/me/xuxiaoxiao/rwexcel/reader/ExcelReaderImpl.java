@@ -68,6 +68,7 @@ public class ExcelReaderImpl implements ExcelReader {
             default:
                 throw new IllegalArgumentException("未能识别Excel文件");
         }
+        inStream.close();
     }
 
     private static class XlsScanner implements HSSFListener {
@@ -143,7 +144,7 @@ public class ExcelReaderImpl implements ExcelReader {
                             cells.add(new ExcelCell(this.sheet.getShtIndex(), rowIndex, i, valList.get(i - colFirst)));
                         }
                     }
-                    listener.onRow(excelRow, cells);
+                    listener.onRow(this.sheet, excelRow, cells);
                 }
             }
             rowIndex = -1;
@@ -282,7 +283,7 @@ public class ExcelReaderImpl implements ExcelReader {
                         cells.add(new ExcelCell(this.sheet.getShtIndex(), rowNum, i, valList.get(i - colFirst)));
                     }
                 }
-                listener.onRow(excelRow, cells);
+                listener.onRow(this.sheet, excelRow, cells);
             }
             colFirst = -1;
             colLast = -1;

@@ -6,11 +6,12 @@ import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 请填写类的描述
+ * 简单Excel解析监听器
  * <ul>
  * <li>[2019/9/18 13:13]XXX：初始创建</li>
  * </ul>
@@ -35,10 +36,10 @@ public abstract class SimpleExcelListener implements ExcelReader.Listener {
     }
 
     @Override
-    public final void onRow(@Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells) {
+    public final void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells) {
         SimpleSheetListener<?> sheetListener = this.listeners.get(this.sheet.getShtIndex());
         if (sheetListener != null) {
-            sheetListener.onRow(row, cells);
+            sheetListener.onRow(sheet, row, cells);
         }
     }
 
@@ -50,5 +51,12 @@ public abstract class SimpleExcelListener implements ExcelReader.Listener {
         }
     }
 
-    public abstract SimpleSheetListener<?> sheetListener(ExcelSheet sheet);
+    /**
+     * 获取对应sheet的监听器
+     *
+     * @param sheet sheet信息
+     * @return 对应sheet的监听器
+     */
+    @Nullable
+    public abstract SimpleSheetListener<?> sheetListener(@Nonnull ExcelSheet sheet);
 }

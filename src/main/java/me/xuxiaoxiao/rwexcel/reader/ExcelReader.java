@@ -19,7 +19,7 @@ import java.util.List;
 public interface ExcelReader {
 
     /**
-     * 流式读取excel 03或07版本
+     * 流式读取excel 03或07版本，自动关闭输入流
      *
      * @param inStream excel文件输入流
      * @param listener 流式读取监听器
@@ -32,7 +32,7 @@ public interface ExcelReader {
      */
     interface Listener {
         /**
-         * 处理sheet
+         * 处理sheet开头
          *
          * @param sheet sheet信息
          */
@@ -47,11 +47,17 @@ public interface ExcelReader {
          *     <li>保证读取单元格的值不为null</li>
          * </ul>
          *
+         * @param sheet sheet信息
          * @param row   row信息
          * @param cells cells信息
          */
-        void onRow(@Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells);
+        void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells);
 
+        /**
+         * 处理sheet结尾
+         *
+         * @param sheet sheet信息
+         */
         void onSheetEnd(@Nonnull ExcelSheet sheet);
     }
 }
