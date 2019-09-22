@@ -20,51 +20,53 @@ public class SimpleExcelListenerTest {
     @Test
     public void testSimpleSheets() throws Exception {
         ExcelReader reader = new ExcelReaderImpl();
-        reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleSheets.xls")), new SimpleExcelListener() {
+        reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleSheets.xls")), new TestSheetsListener());
+    }
 
-            @Override
-            public SimpleSheetListener<?> sheetListener(@Nonnull ExcelSheet sheet) {
-                if (sheet.getShtIndex() == 0) {
-                    return new SimpleSheetListener<TestEntity>(sheet) {
-                        @Override
-                        protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
-                            System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
-                            assert rowStart == 1;
-                            assert rowEnd == 2;
-                            assert list.size() == 1;
-                            TestEntity entity = list.get(0);
-                            System.out.println("解析到实体" + entity);
-                            assert entity.getColStr().equals("str");
-                            assert entity.getColInt() == 1;
-                            assert entity.getColDbl() == 2;
-                            assert entity.getColLng() == 3;
-                            assert entity.getColFlt() == 4;
-                            assert entity.isColBol();
-                            assert new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(entity.getColDat()).equals("2019-01-01 00:00:00.000");
-                        }
-                    };
-                } else {
-                    return new SimpleSheetListener<TestEntity>(sheet) {
-                        @Override
-                        protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
-                            System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
-                            assert rowStart == 1;
-                            assert rowEnd == 3;
-                            assert list.size() == 1;
-                            TestEntity entity = list.get(0);
-                            System.out.println("解析到实体" + entity);
-                            assert entity.getColStr().equals("str1");
-                            assert entity.getColInt() == 2;
-                            assert entity.getColDbl() == 3;
-                            assert entity.getColLng() == 4;
-                            assert entity.getColFlt() == 5;
-                            assert !entity.isColBol();
-                            assert new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(entity.getColDat()).equals("2020-01-01 00:00:00.000");
-                        }
-                    };
-                }
+    public static final class TestSheetsListener extends SimpleExcelListener {
+
+        @Override
+        public SimpleSheetListener<?> sheetListener(@Nonnull ExcelSheet sheet) {
+            if (sheet.getShtIndex() == 0) {
+                return new SimpleSheetListener<TestEntity>(sheet) {
+                    @Override
+                    protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                        System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                        assert rowStart == 1;
+                        assert rowEnd == 2;
+                        assert list.size() == 1;
+                        TestEntity entity = list.get(0);
+                        System.out.println("解析到实体" + entity);
+                        assert entity.getColStr().equals("str");
+                        assert entity.getColInt() == 1;
+                        assert entity.getColDbl() == 2;
+                        assert entity.getColLng() == 3;
+                        assert entity.getColFlt() == 4;
+                        assert entity.isColBol();
+                        assert new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(entity.getColDat()).equals("2019-01-01 00:00:00.000");
+                    }
+                };
+            } else {
+                return new SimpleSheetListener<TestEntity>(sheet) {
+                    @Override
+                    protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                        System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                        assert rowStart == 1;
+                        assert rowEnd == 3;
+                        assert list.size() == 1;
+                        TestEntity entity = list.get(0);
+                        System.out.println("解析到实体" + entity);
+                        assert entity.getColStr().equals("str1");
+                        assert entity.getColInt() == 2;
+                        assert entity.getColDbl() == 3;
+                        assert entity.getColLng() == 4;
+                        assert entity.getColFlt() == 5;
+                        assert !entity.isColBol();
+                        assert new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(entity.getColDat()).equals("2020-01-01 00:00:00.000");
+                    }
+                };
             }
-        });
+        }
     }
 
     @Test

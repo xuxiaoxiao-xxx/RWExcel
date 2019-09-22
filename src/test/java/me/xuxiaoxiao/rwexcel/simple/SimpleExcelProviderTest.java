@@ -1,83 +1,107 @@
 package me.xuxiaoxiao.rwexcel.simple;
 
-import lombok.Data;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
+import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
+import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImpl;
 import me.xuxiaoxiao.rwexcel.writer.ExcelWriter;
 import me.xuxiaoxiao.rwexcel.writer.ExcelWriterImpl;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
-import java.io.FileOutputStream;
+import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedList;
 import java.util.List;
 
 public class SimpleExcelProviderTest {
-
     @Test
-    public void sheetProvider() throws Exception {
+    public void testSimpleSheets() throws Exception {
+        ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
+
         ExcelWriter excelWriter = new ExcelWriterImpl();
-        excelWriter.write(new FileOutputStream("test.xls"), new SimpleExcelProvider() {
+        excelWriter.write(baOutStream, new SimpleExcelProvider() {
             @Nonnull
             @Override
             public ExcelWriter.Version version() {
                 return ExcelWriter.Version.XLS;
             }
 
+            @Nonnull
+            @Override
+            public ExcelSheet[] sheets() {
+                return new ExcelSheet[]{new ExcelSheet(0, "Sheet1"), new ExcelSheet(1, "Sheet2")};
+            }
 
             @Override
-            public SimpleSheetProvider<Entity> sheetProvider(ExcelSheet sheet) {
+            public SimpleSheetProvider<TestEntity> sheetProvider(ExcelSheet sheet) {
+                if (sheet.getShtIndex() == 0) {
+                    return new SimpleSheetProvider<TestEntity>(sheet) {
 
-                return new SimpleSheetProvider<Entity>(sheet) {
+                        @Nullable
+                        @Override
+                        public List<TestEntity> queryList(int lastRowIndex) {
+                            if (lastRowIndex < titleRowCount()) {
+                                List<TestEntity> entities = new ArrayList<>(100);
+                                TestEntity entity1 = new TestEntity();
+                                entity1.setColStr("str");
+                                entity1.setColInt(1);
+                                entity1.setColDbl(2);
+                                entity1.setColLng(3);
+                                entity1.setColFlt(4);
+                                entity1.setColBol(true);
+                                try {
+                                    entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2019-01-01"));
+                                } catch (ParseException e) {
+                                    e.printStackTrace();
+                                }
+                                entities.add(entity1);
+                                return entities;
+                            } else {
+                                return null;
+                            }
+                        }
+                    };
+                } else {
+                    return new SimpleSheetProvider<TestEntity>(sheet) {
 
-                    @Override
-                    public List<Entity> queryList(int lastRowIndex) {
-                        List<Entity> entities = new ArrayList<>(100);
-                        Entity entity1 = new Entity();
-                        entity1.colA = "str";
-                        entity1.colB = 1;
-                        entity1.colC = 2.3;
-                        entity1.colD = 4;
-                        entity1.colE = 5.6f;
-                        entity1.colF = true;
-                        entity1.colG = new Date();
-                        for (int i = 0; i < 100; i++) {
-                            entities.add(entity1);
+                        @Override
+                        protected boolean entitySkip(int lastRowIndex, @Nullable TestEntity entity) {
+                            return false;
                         }
-                        if (lastRowIndex < 60000) {
-                            System.out.println("查询100条数据");
-                            return entities;
-                        } else {
-                            return new LinkedList<>();
+
+                        @Nullable
+                        @Override
+                        public List<TestEntity> queryList(int lastRowIndex) {
+                            if (lastRowIndex < titleRowCount()) {
+                                List<TestEntity> entities = new ArrayList<>(100);
+                                entities.add(null);
+                                TestEntity entity1 = new TestEntity();
+                                entity1.setColStr("str1");
+                                entity1.setColInt(2);
+                                entity1.setColDbl(3);
+                                entity1.setColLng(4);
+                                entity1.setColFlt(5);
+                                entity1.setColBol(false);
+                                try {
+                                    entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2020-01-01"));
+                                } catch (ParseException e) {
+                                    e.printStackTrace();
+                                }
+                                entities.add(entity1);
+                                return entities;
+                            } else {
+                                return null;
+                            }
                         }
-                    }
-                };
+                    };
+                }
             }
         });
-    }
 
-    @Data
-    public static class Entity {
-        @ExcelColumn("列A")
-        private String colA;
-
-        @ExcelColumn("列B")
-        private int colB;
-
-        @ExcelColumn("列C")
-        private double colC;
-
-        @ExcelColumn("列D")
-        private long colD;
-
-        @ExcelColumn("列E")
-        private float colE;
-
-        @ExcelColumn("列F")
-        private boolean colF;
-
-        @ExcelColumn("列G")
-        private Date colG;
+        ExcelReader excelReader = new ExcelReaderImpl();
+        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new SimpleExcelListenerTest.TestSheetsListener());
     }
 }
