@@ -103,10 +103,10 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
         return ExcelWriter.Version.XLSX;
     }
 
-    @Nonnull
+    @Nullable
     @Override
-    public ExcelSheet[] sheets() {
-        return new ExcelSheet[0];
+    public ExcelSheet provideSheet(int lastSheetIndex) {
+        return null;
     }
 
     @Nullable
@@ -121,7 +121,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                     this.list.addAll(temp);
                 }
             }
-            while (list.size() > 0 && entitySkip(lastRowIndex, list.get(0))) {
+            while (list.size() > 0 && skipEntity(lastRowIndex, list.get(0))) {
                 list.remove(0);
             }
             if (list.isEmpty()) {
@@ -144,6 +144,40 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /**
+     * 获取实体类的class对象
+     *
+     * @return 实体类的class对象
+     */
+    @Nonnull
+    protected Class<T> entityClass() {
+        if (this.clazz == null) {
+            Class<?> providerClass = this.getClass();
+            if (providerClass.getGenericSuperclass() instanceof ParameterizedType) {
+                Type[] typeArguments = ((ParameterizedType) providerClass.getGenericSuperclass()).getActualTypeArguments();
+                if (typeArguments != null && typeArguments.length > 0) {
+                    Type paramType = typeArguments[0];
+                    if (paramType instanceof Class) {
+                        return (Class<T>) paramType;
+                    }
+                }
+            }
+            throw new IllegalStateException("未能自动识别SimpleSheetProvider的模板参数");
+        } else {
+            return this.clazz;
+        }
+    }
+
+    /**
+     * 转换异常的处理方法
+     *
+     * @return 转换异常的处理方法
+     */
+    @Nonnull
+    public Converter.MismatchPolicy mismatchPolicy() {
+        return Converter.MismatchPolicy.Throw;
     }
 
     /**
@@ -191,47 +225,13 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     }
 
     /**
-     * 获取实体类的class对象
-     *
-     * @return 实体类的class对象
-     */
-    @Nonnull
-    protected Class<T> entityClass() {
-        if (this.clazz == null) {
-            Class<?> providerClass = this.getClass();
-            if (providerClass.getGenericSuperclass() instanceof ParameterizedType) {
-                Type[] typeArguments = ((ParameterizedType) providerClass.getGenericSuperclass()).getActualTypeArguments();
-                if (typeArguments != null && typeArguments.length > 0) {
-                    Type paramType = typeArguments[0];
-                    if (paramType instanceof Class) {
-                        return (Class<T>) paramType;
-                    }
-                }
-            }
-            throw new IllegalStateException("未能自动识别SimpleSheetProvider的模板参数");
-        } else {
-            return this.clazz;
-        }
-    }
-
-    /**
-     * 转换异常的处理方法
-     *
-     * @return 转换异常的处理方法
-     */
-    @Nonnull
-    public Converter.MismatchPolicy mismatchPolicy() {
-        return Converter.MismatchPolicy.Throw;
-    }
-
-    /**
      * 是否要跳过某个实体
      *
      * @param lastRowIndex 上一个行号
      * @param entity       实体信息
      * @return 是否要跳过
      */
-    protected boolean entitySkip(int lastRowIndex, @Nullable T entity) {
+    protected boolean skipEntity(int lastRowIndex, @Nullable T entity) {
         //跳过null实体
         return entity == null;
     }
@@ -272,7 +272,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                     cMapper.put(field, converter);
                 }
                 try {
-                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), converter.obj2str(field, field.get(entity))));
+                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), fieldCell(row, entity, field), converter.obj2str(field, field.get(entity))));
                 } catch (Exception e) {
                     if (mismatchPolicy() == Converter.MismatchPolicy.Throw) {
                         throw e;
@@ -287,6 +287,10 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
             });
             return cells;
         }
+    }
+
+    protected int fieldCell(@Nonnull ExcelRow row, T entity, Field field) {
+        return fMapper.get(field);
     }
 
     /**

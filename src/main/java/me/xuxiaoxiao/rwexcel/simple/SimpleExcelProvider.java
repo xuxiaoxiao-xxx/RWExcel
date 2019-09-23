@@ -28,10 +28,14 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
         return ExcelWriter.Version.XLSX;
     }
 
-    @Nonnull
+    @Nullable
     @Override
-    public ExcelSheet[] sheets() {
-        return new ExcelSheet[]{new ExcelSheet(0, "sheet1")};
+    public ExcelSheet provideSheet(int lastSheetIndex) {
+        if (lastSheetIndex < 0) {
+            return new ExcelSheet(0, "Sheet1");
+        } else {
+            return null;
+        }
     }
 
     @Nullable

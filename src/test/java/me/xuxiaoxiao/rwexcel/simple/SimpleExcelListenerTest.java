@@ -85,7 +85,7 @@ public class SimpleExcelListenerTest {
 
                         @Nullable
                         @Override
-                        protected Field entityField(int rowIndex, int colIndex) {
+                        protected Field cellField(int rowIndex, @Nullable ExcelRow row, int colIndex, @Nullable ExcelCell cell) {
                             try {
                                 switch (colIndex) {
                                     case 0:
@@ -134,7 +134,7 @@ public class SimpleExcelListenerTest {
                         }
 
                         @Override
-                        protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
+                        protected boolean skipRow(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
                             return false;
                         }
 

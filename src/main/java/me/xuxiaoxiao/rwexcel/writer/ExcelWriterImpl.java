@@ -24,11 +24,10 @@ public class ExcelWriterImpl implements ExcelWriter {
     public void write(@Nonnull OutputStream outStream, @Nonnull Provider provider) throws Exception {
         Workbook workbook = provider.version() == Version.XLS ? new HSSFWorkbook() : new SXSSFWorkbook(100);
 
-        ExcelSheet[] excelSheets = provider.sheets();
-        for (int i = 0; i < excelSheets.length; i++) {
-            ExcelSheet excelSheet = excelSheets[i];
+        for (int i = 0; ; i++) {
+            ExcelSheet excelSheet = provider.provideSheet(i - 1);
             if (excelSheet == null) {
-                throw new IllegalArgumentException(String.format("写出sheet错误，sheets[%d]不能为null", i));
+                break;
             } else if (excelSheet.getShtIndex() != i) {
                 throw new IllegalArgumentException(String.format("写出sheet错误，期望shtIndex：%d，实际shtIndex：%d", i, excelSheet.getShtIndex()));
             } else if (excelSheet.getShtName().trim().isEmpty()) {
@@ -63,6 +62,7 @@ public class ExcelWriterImpl implements ExcelWriter {
                                 } else if (excelCell.getColIndex() < 0 || excelCell.getColIndex() <= lastColIndex) {
                                     throw new IllegalArgumentException(String.format("写出cell错误，期望colIndex大于0且按顺序，实际colIndex：%d", excelCell.getColIndex()));
                                 } else {
+                                    lastColIndex = excelCell.getColIndex();
                                     Cell cell = row.createCell(excelCell.getColIndex(), CellType.STRING);
                                     cell.setCellValue(excelCell.getStrValue());
                                 }

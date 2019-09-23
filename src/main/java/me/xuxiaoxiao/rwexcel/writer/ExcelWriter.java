@@ -54,19 +54,19 @@ public interface ExcelWriter {
         Version version();
 
         /**
-         * 所有sheets信息
+         * 是否还有sheets信息
          *
-         * @return 所有sheets信息
+         * @return sheets信息，返回null结束excel导出
          */
-        @Nonnull
-        ExcelSheet[] sheets();
+        @Nullable
+        ExcelSheet provideSheet(int lastSheetIndex);
 
         /**
-         * 是否还有row数据
+         * 是否还有row信息
          *
          * @param sheet        当前sheet
          * @param lastRowIndex 上一个row的序号，初始为-1
-         * @return 为null则结束当前sheet写出，不为null则继续写出新的row
+         * @return row信息，返回null则结束当前sheet写出
          */
         @Nullable
         ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex);

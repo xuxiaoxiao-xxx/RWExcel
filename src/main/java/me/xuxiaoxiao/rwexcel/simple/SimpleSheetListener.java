@@ -100,7 +100,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
             while (rowEnd < row.getRowIndex()) {
                 try {
                     //处理空白行
-                    if (!rowSkip(rowEnd, null, null)) {
+                    if (!skipRow(rowEnd, null, null)) {
                         list.add(rowEntity(rowEnd, null, null));
                         if (list.size() >= cache) {
                             flush();
@@ -112,7 +112,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                 }
             }
             try {
-                if (!rowSkip(row.getRowIndex(), row, cells)) {
+                if (!skipRow(row.getRowIndex(), row, cells)) {
                     list.add(rowEntity(row.getRowIndex(), row, cells));
                     if (list.size() >= cache) {
                         flush();
@@ -128,6 +128,40 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
     @Override
     public final void onSheetEnd(@Nonnull ExcelSheet sheet) {
         flush();
+    }
+
+    /**
+     * 获取实体类的class对象
+     *
+     * @return 实体类的class对象
+     */
+    @Nonnull
+    protected Class<T> entityClass() {
+        if (this.clazz == null) {
+            Class<?> listenerClass = this.getClass();
+            if (listenerClass.getGenericSuperclass() instanceof ParameterizedType) {
+                Type[] typeArguments = ((ParameterizedType) listenerClass.getGenericSuperclass()).getActualTypeArguments();
+                if (typeArguments != null && typeArguments.length > 0) {
+                    Type paramType = typeArguments[0];
+                    if (paramType instanceof Class) {
+                        return (Class<T>) paramType;
+                    }
+                }
+            }
+            throw new IllegalStateException("未能自动识别SimpleExcelListener的模板参数");
+        } else {
+            return this.clazz;
+        }
+    }
+
+    /**
+     * 转换异常的处理方法
+     *
+     * @return 转换异常的处理方法
+     */
+    @Nonnull
+    public Converter.MismatchPolicy mismatchPolicy() {
+        return Converter.MismatchPolicy.Throw;
     }
 
     /**
@@ -177,52 +211,6 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
     }
 
     /**
-     * 获取实体类的class对象
-     *
-     * @return 实体类的class对象
-     */
-    @Nonnull
-    protected Class<T> entityClass() {
-        if (this.clazz == null) {
-            Class<?> listenerClass = this.getClass();
-            if (listenerClass.getGenericSuperclass() instanceof ParameterizedType) {
-                Type[] typeArguments = ((ParameterizedType) listenerClass.getGenericSuperclass()).getActualTypeArguments();
-                if (typeArguments != null && typeArguments.length > 0) {
-                    Type paramType = typeArguments[0];
-                    if (paramType instanceof Class) {
-                        return (Class<T>) paramType;
-                    }
-                }
-            }
-            throw new IllegalStateException("未能自动识别SimpleExcelListener的模板参数");
-        } else {
-            return this.clazz;
-        }
-    }
-
-    /**
-     * 获取excel列对应的Field对象
-     *
-     * @param rowIndex 行号
-     * @param colIndex 列号
-     * @return 对应的Field对象
-     */
-    @Nullable
-    protected Field entityField(int rowIndex, int colIndex) {
-        return fMapper.get(colIndex);
-    }
-
-    /**
-     * 转换异常的处理方法
-     *
-     * @return 转换异常的处理方法
-     */
-    @Nonnull
-    public Converter.MismatchPolicy mismatchPolicy() {
-        return Converter.MismatchPolicy.Throw;
-    }
-
-    /**
      * 是否跳过某行
      *
      * @param rowIndex 行号
@@ -231,7 +219,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
      * @return 是否跳过
      * @throws Exception 判断过程中出现的异常
      */
-    protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
+    protected boolean skipRow(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
         //第一行和空白行都要跳过
         return rowIndex < titleRowCount() || row == null;
     }
@@ -252,7 +240,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
         } else {
             T entity = this.clazz.newInstance();
             for (ExcelCell cell : cells) {
-                Field field = entityField(cell.getRowIndex(), cell.getColIndex());
+                Field field = cellField(cell.getRowIndex(), row, cell.getColIndex(), cell);
                 if (field != null) {
                     Converter converter = cMapper.get(cell.getColIndex());
                     if (converter == null) {
@@ -271,6 +259,20 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
             }
             return entity;
         }
+    }
+
+    /**
+     * 获取excel列对应的Field对象
+     *
+     * @param rowIndex 行号
+     * @param row      行信息
+     * @param colIndex 列号
+     * @param cell     单元格信息
+     * @return 对应的Field对象
+     */
+    @Nullable
+    protected Field cellField(int rowIndex, @Nullable ExcelRow row, int colIndex, @Nullable ExcelCell cell) {
+        return fMapper.get(colIndex);
     }
 
     /**

@@ -29,10 +29,16 @@ public class SimpleExcelProviderTest {
                 return ExcelWriter.Version.XLS;
             }
 
-            @Nonnull
+            @Nullable
             @Override
-            public ExcelSheet[] sheets() {
-                return new ExcelSheet[]{new ExcelSheet(0, "Sheet1"), new ExcelSheet(1, "Sheet2")};
+            public ExcelSheet provideSheet(int lastSheetIndex) {
+                if (lastSheetIndex == -1) {
+                    return new ExcelSheet(0, "Sheet1");
+                } else if (lastSheetIndex == 0) {
+                    return new ExcelSheet(1, "Sheet2");
+                } else {
+                    return null;
+                }
             }
 
             @Override
@@ -68,7 +74,7 @@ public class SimpleExcelProviderTest {
                     return new SimpleSheetProvider<TestEntity>(sheet) {
 
                         @Override
-                        protected boolean entitySkip(int lastRowIndex, @Nullable TestEntity entity) {
+                        protected boolean skipEntity(int lastRowIndex, @Nullable TestEntity entity) {
                             return false;
                         }
 
