@@ -10,7 +10,6 @@ import org.junit.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Objects;
@@ -85,28 +84,38 @@ public class SimpleExcelListenerTest {
 
                         @Nullable
                         @Override
-                        protected Field cellField(int rowIndex, @Nullable ExcelRow row, int colIndex, @Nullable ExcelCell cell) {
-                            try {
-                                switch (colIndex) {
-                                    case 0:
-                                        return entityClass().getDeclaredField("colStr");
-                                    case 1:
-                                        return entityClass().getDeclaredField("colInt");
-                                    case 2:
-                                        return entityClass().getDeclaredField("colDbl");
-                                    case 3:
-                                        return entityClass().getDeclaredField("colLng");
-                                    case 4:
-                                        return entityClass().getDeclaredField("colFlt");
-                                    case 5:
-                                        return entityClass().getDeclaredField("colBol");
-                                    case 6:
-                                        return entityClass().getDeclaredField("colDat");
+                        protected TestEntity rowEntity(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
+                            if (row == null || cells == null || cells.isEmpty()) {
+                                return null;
+                            } else {
+                                TestEntity entity = new TestEntity();
+                                for (ExcelCell cell : cells) {
+                                    switch (cell.getColIndex()) {
+                                        case 0:
+                                            entity.setColStr(cell.getStrValue());
+                                            break;
+                                        case 1:
+                                            entity.setColInt(Integer.parseInt(cell.getStrValue()));
+                                            break;
+                                        case 2:
+                                            entity.setColDbl(Double.parseDouble(cell.getStrValue()));
+                                            break;
+                                        case 3:
+                                            entity.setColLng(Long.parseLong(cell.getStrValue()));
+                                            break;
+                                        case 4:
+                                            entity.setColFlt(Float.parseFloat(cell.getStrValue()));
+                                            break;
+                                        case 5:
+                                            entity.setColBol(Boolean.parseBoolean(cell.getStrValue()));
+                                            break;
+                                        case 6:
+                                            entity.setColDat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(cell.getStrValue()));
+                                            break;
+                                    }
                                 }
-                            } catch (NoSuchFieldException e) {
-                                e.printStackTrace();
+                                return entity;
                             }
-                            throw new RuntimeException("未找到Field");
                         }
 
                         @Override
@@ -134,7 +143,7 @@ public class SimpleExcelListenerTest {
                         }
 
                         @Override
-                        protected boolean skipRow(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
+                        protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
                             return false;
                         }
 

@@ -74,7 +74,7 @@ public class SimpleExcelProviderTest {
                     return new SimpleSheetProvider<TestEntity>(sheet) {
 
                         @Override
-                        protected boolean skipEntity(int lastRowIndex, @Nullable TestEntity entity) {
+                        protected boolean entitySkip(int lastRowIndex, @Nullable TestEntity entity) {
                             return false;
                         }
 

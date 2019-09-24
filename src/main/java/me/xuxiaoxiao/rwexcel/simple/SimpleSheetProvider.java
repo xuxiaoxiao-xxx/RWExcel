@@ -121,7 +121,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                     this.list.addAll(temp);
                 }
             }
-            while (list.size() > 0 && skipEntity(lastRowIndex, list.get(0))) {
+            while (list.size() > 0 && entitySkip(lastRowIndex, list.get(0))) {
                 list.remove(0);
             }
             if (list.isEmpty()) {
@@ -231,7 +231,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
      * @param entity       实体信息
      * @return 是否要跳过
      */
-    protected boolean skipEntity(int lastRowIndex, @Nullable T entity) {
+    protected boolean entitySkip(int lastRowIndex, @Nullable T entity) {
         //跳过null实体
         return entity == null;
     }
@@ -272,7 +272,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                     cMapper.put(field, converter);
                 }
                 try {
-                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), fieldCell(row, entity, field), converter.obj2str(field, field.get(entity))));
+                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), fMapper.get(field), converter.obj2str(field, field.get(entity))));
                 } catch (Exception e) {
                     if (mismatchPolicy() == Converter.MismatchPolicy.Throw) {
                         throw e;
@@ -287,10 +287,6 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
             });
             return cells;
         }
-    }
-
-    protected int fieldCell(@Nonnull ExcelRow row, T entity, Field field) {
-        return fMapper.get(field);
     }
 
     /**

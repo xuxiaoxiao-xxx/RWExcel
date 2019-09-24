@@ -50,7 +50,6 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
         this(sheet, 100);
     }
 
-
     /**
      * 创建一个sheet监听器，指定列表缓存大小
      *
@@ -100,7 +99,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
             while (rowEnd < row.getRowIndex()) {
                 try {
                     //处理空白行
-                    if (!skipRow(rowEnd, null, null)) {
+                    if (!rowSkip(rowEnd, null, null)) {
                         list.add(rowEntity(rowEnd, null, null));
                         if (list.size() >= cache) {
                             flush();
@@ -112,7 +111,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                 }
             }
             try {
-                if (!skipRow(row.getRowIndex(), row, cells)) {
+                if (!rowSkip(row.getRowIndex(), row, cells)) {
                     list.add(rowEntity(row.getRowIndex(), row, cells));
                     if (list.size() >= cache) {
                         flush();
@@ -219,7 +218,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
      * @return 是否跳过
      * @throws Exception 判断过程中出现的异常
      */
-    protected boolean skipRow(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
+    protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
         //第一行和空白行都要跳过
         return rowIndex < titleRowCount() || row == null;
     }
@@ -240,7 +239,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
         } else {
             T entity = this.clazz.newInstance();
             for (ExcelCell cell : cells) {
-                Field field = cellField(cell.getRowIndex(), row, cell.getColIndex(), cell);
+                Field field = fMapper.get(cell.getColIndex());
                 if (field != null) {
                     Converter converter = cMapper.get(cell.getColIndex());
                     if (converter == null) {
@@ -259,20 +258,6 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
             }
             return entity;
         }
-    }
-
-    /**
-     * 获取excel列对应的Field对象
-     *
-     * @param rowIndex 行号
-     * @param row      行信息
-     * @param colIndex 列号
-     * @param cell     单元格信息
-     * @return 对应的Field对象
-     */
-    @Nullable
-    protected Field cellField(int rowIndex, @Nullable ExcelRow row, int colIndex, @Nullable ExcelCell cell) {
-        return fMapper.get(colIndex);
     }
 
     /**

@@ -178,17 +178,39 @@ public class ExcelReaderImpl implements ExcelReader {
                         valList.add(null);
                         break;
                     case BoolErrRecord.sid:
-                        //TODO 需要测试是否正确
                         BoolErrRecord boolErrRecord = (BoolErrRecord) record;
                         valList.add(String.valueOf(!boolErrRecord.isError() && boolErrRecord.getBooleanValue()));
                         break;
                     case FormulaRecord.sid:
                         FormulaRecord formulaRecord = (FormulaRecord) record;
-                        if (Double.isNaN(formulaRecord.getValue())) {
-                            handleNextStringRecord = true;
-                            nextStringRecordColumn = formulaRecord.getColumn();
-                        } else {
-                            valList.add(formatListener.formatNumberDateCell(formulaRecord));
+                        switch (formulaRecord.getCachedResultType()) {
+                            case 0: {
+                                //数值型
+                                valList.add(formatListener.formatNumberDateCell(formulaRecord));
+                                break;
+                            }
+                            case 1: {
+                                //字符串单元格
+                                handleNextStringRecord = true;
+                                nextStringRecordColumn = formulaRecord.getColumn();
+                                valList.add(null);
+                                break;
+                            }
+                            case 3: {
+                                //空白单元格
+                                valList.add("");
+                                break;
+                            }
+                            case 4: {
+                                //逻辑值单元格
+                                valList.add(String.valueOf(formulaRecord.getCachedBooleanValue()));
+                                break;
+                            }
+                            default: {
+                                //未知或错误单元格，添加null占位，最终会当成空白单元格处理
+                                valList.add(null);
+                                break;
+                            }
                         }
                         break;
                     case LabelRecord.sid:
