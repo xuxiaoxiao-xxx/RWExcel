@@ -2,9 +2,9 @@ package me.xuxiaoxiao.rwexcel.simple;
 
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
-import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImpl;
+import me.xuxiaoxiao.rwexcel.reader.ExcelStreamReader;
+import me.xuxiaoxiao.rwexcel.writer.ExcelStreamWriter;
 import me.xuxiaoxiao.rwexcel.writer.ExcelWriter;
-import me.xuxiaoxiao.rwexcel.writer.ExcelWriterImpl;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
@@ -21,7 +21,7 @@ public class SimpleExcelProviderTest {
     public void testSimpleSheets() throws Exception {
         ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
 
-        ExcelWriter excelWriter = new ExcelWriterImpl();
+        ExcelWriter excelWriter = new ExcelStreamWriter();
         excelWriter.write(baOutStream, new SimpleExcelProvider() {
             @Nonnull
             @Override
@@ -107,7 +107,7 @@ public class SimpleExcelProviderTest {
             }
         });
 
-        ExcelReader excelReader = new ExcelReaderImpl();
+        ExcelReader excelReader = new ExcelStreamReader();
         excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new SimpleExcelListenerTest.TestSheetsListener());
     }
 }

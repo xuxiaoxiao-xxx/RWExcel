@@ -32,7 +32,7 @@ import java.util.List;
  *
  * @author XXX
  */
-public class ExcelReaderImpl implements ExcelReader {
+public class ExcelStreamReader implements ExcelReader {
 
     @Override
     public void read(@Nonnull InputStream inStream, @Nonnull Listener listener) throws Exception {

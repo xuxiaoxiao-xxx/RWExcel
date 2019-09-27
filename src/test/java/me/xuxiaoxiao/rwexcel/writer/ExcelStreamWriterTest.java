@@ -4,8 +4,8 @@ import me.xuxiaoxiao.rwexcel.ExcelCell;
 import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
-import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImpl;
-import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImplTest;
+import me.xuxiaoxiao.rwexcel.reader.ExcelStreamReader;
+import me.xuxiaoxiao.rwexcel.reader.ExcelStreamReaderTest;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
@@ -15,17 +15,17 @@ import java.io.ByteArrayOutputStream;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ExcelWriterImplTest {
+public class ExcelStreamWriterTest {
 
     @Test
     public void writeXls() throws Exception {
         ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
 
-        ExcelWriter excelWriter = new ExcelWriterImpl();
+        ExcelWriter excelWriter = new ExcelStreamWriter();
         excelWriter.write(baOutStream, new TestProvider(ExcelWriter.Version.XLS));
 
-        ExcelReader excelReader = new ExcelReaderImpl();
-        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new ExcelReaderImplTest.TestListener());
+        ExcelReader excelReader = new ExcelStreamReader();
+        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new ExcelStreamReaderTest.TestListener());
     }
 
     public static final class TestProvider implements ExcelWriter.Provider {

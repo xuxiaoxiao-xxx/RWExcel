@@ -4,7 +4,7 @@ import me.xuxiaoxiao.rwexcel.ExcelCell;
 import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
-import me.xuxiaoxiao.rwexcel.reader.ExcelReaderImpl;
+import me.xuxiaoxiao.rwexcel.reader.ExcelStreamReader;
 import me.xuxiaoxiao.rwexcel.simple.converter.Converter;
 import org.junit.Test;
 
@@ -17,8 +17,32 @@ import java.util.Objects;
 public class SimpleExcelListenerTest {
 
     @Test
+    public void demo() throws Exception {
+        new ExcelStreamReader().read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleSheets.xls")), new SimpleExcelListener() {
+
+            @Nullable
+            @Override
+            public SimpleSheetListener<TestEntity> sheetListener(@Nonnull ExcelSheet sheet) {
+                if (sheet.getShtIndex() == 0) {
+                    return new SimpleSheetListener<TestEntity>(sheet) {
+                        @Override
+                        protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                            System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                            for (TestEntity entity : list) {
+                                System.out.println(entity);
+                            }
+                        }
+                    };
+                } else {
+                    return null;
+                }
+            }
+        });
+    }
+
+    @Test
     public void testSimpleSheets() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleSheets.xls")), new TestSheetsListener());
     }
 
@@ -70,7 +94,7 @@ public class SimpleExcelListenerTest {
 
     @Test
     public void testSimpleTitle() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleTitle.xls")), new SimpleExcelListener() {
 
             @Override
@@ -174,7 +198,7 @@ public class SimpleExcelListenerTest {
 
     @Test
     public void testSimpleAdaptive() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleAdaptive.xls")), new SimpleExcelListener() {
 
             @Override
@@ -204,7 +228,7 @@ public class SimpleExcelListenerTest {
 
     @Test(expected = RuntimeException.class)
     public void testSimpleThrow() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleMismatch.xls")), new SimpleExcelListener() {
 
             @Override
@@ -221,7 +245,7 @@ public class SimpleExcelListenerTest {
 
     @Test
     public void testSimpleDefault() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleMismatch.xls")), new SimpleExcelListener() {
 
             @Override

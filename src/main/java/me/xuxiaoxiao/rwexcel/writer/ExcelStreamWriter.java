@@ -18,7 +18,7 @@ import java.io.OutputStream;
  *
  * @author XXX
  */
-public class ExcelWriterImpl implements ExcelWriter {
+public class ExcelStreamWriter implements ExcelWriter {
 
     @Override
     public void write(@Nonnull OutputStream outStream, @Nonnull Provider provider) throws Exception {

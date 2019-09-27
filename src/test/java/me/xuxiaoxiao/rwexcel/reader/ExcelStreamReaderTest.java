@@ -9,11 +9,34 @@ import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Objects;
 
-public class ExcelReaderImplTest {
+public class ExcelStreamReaderTest {
+
+    @Test
+    public void demo() throws Exception {
+        new ExcelStreamReader().read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("test.xls")), new ExcelReader.Listener() {
+            @Override
+            public void onSheetStart(@Nonnull ExcelSheet sheet) {
+                System.out.println("开始解析Sheet：" + sheet.getShtName());
+            }
+
+            @Override
+            public void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells) {
+                System.out.println("解析row：rowIndex=" + row.getRowIndex() + "，colFirst=" + row.getColFirst() + "，colLast=" + row.getColLast());
+                for (ExcelCell cell : cells) {
+                    System.out.println("colIndex=" + cell.getColIndex() + "，strValue=" + cell.getStrValue());
+                }
+            }
+
+            @Override
+            public void onSheetEnd(@Nonnull ExcelSheet sheet) {
+                System.out.println("结束解析Sheet：" + sheet.getShtName());
+            }
+        });
+    }
 
     @Test
     public void readXls() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         TestListener listener = new TestListener();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("test.xls")), listener);
         assert listener.sheets == 2;
@@ -21,7 +44,7 @@ public class ExcelReaderImplTest {
 
     @Test
     public void readXlsx() throws Exception {
-        ExcelReader reader = new ExcelReaderImpl();
+        ExcelReader reader = new ExcelStreamReader();
         TestListener listener = new TestListener();
         reader.read(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("test.xlsx")), listener);
         assert listener.sheets == 2;
