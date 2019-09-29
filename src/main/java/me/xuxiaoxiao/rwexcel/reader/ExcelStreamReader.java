@@ -36,7 +36,8 @@ public class ExcelStreamReader implements ExcelReader {
 
     @Override
     public void read(@Nonnull InputStream inStream, @Nonnull Listener listener) throws Exception {
-        FileMagic magic = FileMagic.valueOf(FileMagic.prepareToCheckMagic(inStream));
+        inStream = FileMagic.prepareToCheckMagic(inStream);
+        FileMagic magic = FileMagic.valueOf(inStream);
         switch (magic) {
             case OLE2:
                 try (POIFSFileSystem pStream = new POIFSFileSystem(inStream)) {
