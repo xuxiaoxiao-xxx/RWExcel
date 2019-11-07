@@ -3,7 +3,7 @@ package me.xuxiaoxiao.rwexcel.simple;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
 import me.xuxiaoxiao.rwexcel.reader.ExcelStreamReader;
-import me.xuxiaoxiao.rwexcel.writer.ExcelStreamWriter;
+import me.xuxiaoxiao.rwexcel.writer.ExcelUserWriter;
 import me.xuxiaoxiao.rwexcel.writer.ExcelWriter;
 import org.junit.Test;
 
@@ -16,12 +16,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SimpleExcelProviderTest {
+public class SimpleExcelUserProviderTest {
     @Test
     public void testSimpleSheets() throws Exception {
         ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
 
-        ExcelWriter excelWriter = new ExcelStreamWriter();
+        ExcelWriter excelWriter = new ExcelUserWriter();
         excelWriter.write(baOutStream, new SimpleExcelProvider() {
             @Nonnull
             @Override
@@ -108,6 +108,6 @@ public class SimpleExcelProviderTest {
         });
 
         ExcelReader excelReader = new ExcelStreamReader();
-        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new SimpleExcelListenerTest.TestSheetsListener());
+        excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new SimpleExcelStreamListenerTest.TestSheetsListener());
     }
 }

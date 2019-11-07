@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Excel解析器实现
+ * Excel解析器EventModel实现
  * <ul>
  * <li>[2019/9/12 19:42]XXX：初始创建</li>
  * </ul>
