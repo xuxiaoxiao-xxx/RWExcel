@@ -257,6 +257,7 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
      * @param row    实体对应的行信息
      * @param entity 实体信息
      * @return 实体对应的单元格列表
+     * @throws Exception 转换时可能发生异常
      */
     @Nonnull
     protected List<ExcelCell> entityCells(@Nonnull ExcelRow row, @Nullable T entity) throws Exception {

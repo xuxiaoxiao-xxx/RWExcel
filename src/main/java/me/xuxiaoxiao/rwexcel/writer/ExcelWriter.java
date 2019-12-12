@@ -56,6 +56,7 @@ public interface ExcelWriter {
         /**
          * 是否还有sheets信息
          *
+         * @param lastSheetIndex 上一个sheet的序号，从-1开始
          * @return sheets信息，返回null结束excel导出
          */
         @Nullable

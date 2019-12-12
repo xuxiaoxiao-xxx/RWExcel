@@ -54,6 +54,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
      * 创建一个sheet监听器，指定列表缓存大小
      *
      * @param sheet 当前sheet信息
+     * @param cache 缓存大小
      */
     public SimpleSheetListener(ExcelSheet sheet, int cache) {
         this.list = new ArrayList<>(cache);

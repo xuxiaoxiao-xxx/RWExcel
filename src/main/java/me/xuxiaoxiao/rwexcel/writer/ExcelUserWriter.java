@@ -5,7 +5,6 @@ import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.annotation.Nonnull;
@@ -74,9 +73,6 @@ public class ExcelUserWriter implements ExcelWriter {
             }
         }
         workbook.write(outStream);
-        if (workbook instanceof SXSSFWorkbook) {
-            ((SXSSFWorkbook) workbook).dispose();
-        }
         workbook.close();
         outStream.close();
     }
