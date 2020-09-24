@@ -23,78 +23,122 @@ import java.util.*;
  * @author XXX
  */
 public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
-    private final List<T> list = new LinkedList<>();
-
-    @Getter
-    private final ExcelSheet sheet;
+    /**
+     * 模板类型
+     */
     @Getter
     private final Class<T> clazz;
+    /**
+     * Java类属性和Excel列号的映射关系
+     */
+    @Getter
+    private final Map<Field, Integer> mapper = new HashMap<>();
+    /**
+     * Java类属性和属性转换器的映射关系
+     */
+    @Getter
+    private final Map<Field, Converter> converters = new HashMap<>();
+    /**
+     * Excel第一列的列号
+     */
+    @Getter
+    private final int colFirst;
+    /**
+     * Excel最后一列的列号
+     */
+    @Getter
+    private final int colLast;
 
-    protected final int colFirst, colLast;
-    protected final Map<Field, Integer> fMapper = new HashMap<>();
-    protected final Map<Field, Converter> cMapper = new HashMap<>();
+    private final List<T> list = new LinkedList<>();
 
     /**
      * 创建一个sheet数据源
-     *
-     * @param sheet 当前sheet信息
      */
-    public SimpleSheetProvider(ExcelSheet sheet) {
-        this.sheet = sheet;
-        this.clazz = entityClass();
+    public SimpleSheetProvider() {
+        this.clazz = detectEntityClass();
+        this.mapper.putAll(detectEntityMapper());
 
         int colF = Integer.MAX_VALUE, colL = Integer.MIN_VALUE;
-        boolean adaptive = true;
-        List<Field> fieldList = new LinkedList<>();
+        for (Map.Entry<Field, Integer> entry : mapper.entrySet()) {
+            if (colF > entry.getValue()) {
+                colF = entry.getValue();
+            }
+            if (colL < entry.getValue()) {
+                colL = entry.getValue();
+            }
+        }
+        this.colFirst = colF;
+        this.colLast = colL;
+    }
+
+    /**
+     * 获取模板类型的class对象
+     *
+     * @return 模板类型的class对象
+     */
+    @Nonnull
+    @SuppressWarnings("unchecked")
+    protected Class<T> detectEntityClass() {
+        Class<?> providerClass = this.getClass();
+        if (providerClass.getGenericSuperclass() instanceof ParameterizedType) {
+            Type[] typeArguments = ((ParameterizedType) providerClass.getGenericSuperclass()).getActualTypeArguments();
+            if (typeArguments != null && typeArguments.length > 0) {
+                Type paramType = typeArguments[0];
+                if (paramType instanceof Class) {
+                    return (Class<T>) paramType;
+                }
+            }
+        }
+        throw new IllegalStateException("未能自动识别SimpleExcelListener的模板参数，请勿多级继承SimpleExcelListener，或自行实现detectEntityClass方法");
+    }
+
+    /**
+     * 获取Excel列号和Java类属性的映射关系
+     *
+     * @return Excel列号和Java类属性的映射关系
+     */
+    @Nonnull
+    protected Map<Field, Integer> detectEntityMapper() {
+        Map<Field, Integer> map = new HashMap<>();
+
         for (Class<?> i = this.clazz; !i.equals(Object.class); i = i.getSuperclass()) {
             Field[] fields = i.getDeclaredFields();
             for (Field field : fields) {
                 if (field.isAnnotationPresent(ExcelColumn.class)) {
                     field.setAccessible(true);
-                    fieldList.add(field);
 
                     ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
                     if (excelColumn.index() >= 0) {
-                        adaptive = false;
-                        if (excelColumn.index() < colF) {
-                            colF = excelColumn.index();
+                        //模板类型class设置了index，将映射关系存入到mapper中
+                        for (Map.Entry<Field, Integer> entry : map.entrySet()) {
+                            if (entry.getValue().equals(excelColumn.index())) {
+                                throw new IllegalArgumentException(String.format("%s 中有多个属性映射到了Excel的第 %d 列", this.clazz.getSimpleName(), excelColumn.index()));
+                            }
                         }
-                        if (colL < excelColumn.index()) {
-                            colL = excelColumn.index();
-                        }
-                        fMapper.put(field, excelColumn.index());
-                    } else if (!adaptive) {
-                        throw new IllegalArgumentException(String.format("ExcelColumn的列 %s 未设置序号", excelColumn.value()));
-                    }
-                }
-            }
-        }
-        if (adaptive) {
-            Collections.sort(fieldList, new Comparator<Field>() {
-                @Override
-                public int compare(Field o1, Field o2) {
-                    Class<?> c1 = o1.getDeclaringClass();
-                    Class<?> c2 = o2.getDeclaringClass();
-                    if (c1.equals(c2)) {
-                        return 0;
-                    } else if (c1.isAssignableFrom(c2)) {
-                        return -1;
+                        map.put(field, excelColumn.index());
                     } else {
-                        return 1;
+                        //模板类型class没有设置index，根据列名将映射关系存入到mapper中
+                        int index = 0;
+                        while (true) {
+                            boolean exist = false;
+                            for (Map.Entry<Field, Integer> entry : map.entrySet()) {
+                                if (entry.getValue().equals(index)) {
+                                    exist = true;
+                                    break;
+                                }
+                            }
+                            if (exist) {
+                                index++;
+                            } else {
+                                map.put(field, index);
+                                break;
+                            }
+                        }
                     }
                 }
-            });
-            colF = 0;
-            colL = fieldList.size() - 1;
-            for (int i = 0; i < fieldList.size(); i++) {
-                fMapper.put(fieldList.get(i), i);
             }
         }
-        this.colFirst = colF;
-        this.colLast = colL;
-        if (fMapper.isEmpty()) {
-            throw new IllegalArgumentException("SimpleSheetProvider的模板参数中未找到任何使用@Excelolumn标记的属性");
-        }
+        return map;
     }
 
     @Nonnull
@@ -106,14 +150,18 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     @Nullable
     @Override
     public ExcelSheet provideSheet(int lastSheetIndex) {
-        return null;
+        if (lastSheetIndex < 0) {
+            return new ExcelSheet(0, "Sheet1");
+        } else {
+            return null;
+        }
     }
 
     @Nullable
     @Override
     public final ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
         if (lastRowIndex + 1 < titleRowCount()) {
-            return titleRow(lastRowIndex);
+            return titleRow(sheet, lastRowIndex);
         } else {
             if (list.isEmpty()) {
                 List<T> temp = queryList(lastRowIndex);
@@ -121,13 +169,13 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
                     this.list.addAll(temp);
                 }
             }
-            while (list.size() > 0 && entitySkip(lastRowIndex, list.get(0))) {
+            while (list.size() > 0 && entitySkip(sheet, lastRowIndex, list.get(0))) {
                 list.remove(0);
             }
             if (list.isEmpty()) {
                 return null;
             } else {
-                return entityRow(lastRowIndex, list.get(0));
+                return entityRow(sheet, lastRowIndex, list.get(0));
             }
         }
     }
@@ -136,37 +184,13 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     @Override
     public final List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
         if (row.getRowIndex() < titleRowCount()) {
-            return titleCells(row);
+            return titleCells(sheet, row);
         } else {
             try {
-                return entityCells(row, list.remove(0));
+                return entityCells(sheet, row, list.remove(0));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-    }
-
-    /**
-     * 获取实体类的class对象
-     *
-     * @return 实体类的class对象
-     */
-    @Nonnull
-    protected Class<T> entityClass() {
-        if (this.clazz == null) {
-            Class<?> providerClass = this.getClass();
-            if (providerClass.getGenericSuperclass() instanceof ParameterizedType) {
-                Type[] typeArguments = ((ParameterizedType) providerClass.getGenericSuperclass()).getActualTypeArguments();
-                if (typeArguments != null && typeArguments.length > 0) {
-                    Type paramType = typeArguments[0];
-                    if (paramType instanceof Class) {
-                        return (Class<T>) paramType;
-                    }
-                }
-            }
-            throw new IllegalStateException("未能自动识别SimpleSheetProvider的模板参数");
-        } else {
-            return this.clazz;
         }
     }
 
@@ -192,11 +216,12 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     /**
      * 标题行信息
      *
+     * @param sheet        当前sheet
      * @param lastRowIndex 上一个行号
      * @return 标题行信息
      */
     @Nullable
-    protected ExcelRow titleRow(int lastRowIndex) {
+    protected ExcelRow titleRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
         ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
         excelRow.setColFirst(this.colFirst);
         excelRow.setColLast(this.colLast);
@@ -206,14 +231,15 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     /**
      * 标题行的单元格列表
      *
-     * @param row 标题行信息
+     * @param sheet 当前sheet
+     * @param row   标题行信息
      * @return 标题行的单元格列表
      */
     @Nonnull
-    protected List<ExcelCell> titleCells(@Nonnull ExcelRow row) {
+    protected List<ExcelCell> titleCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
         List<ExcelCell> cells = new LinkedList<>();
-        for (Map.Entry<Field, Integer> entry : this.fMapper.entrySet()) {
-            cells.add(new ExcelCell(this.sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), entry.getKey().getAnnotation(ExcelColumn.class).value()));
+        for (Map.Entry<Field, Integer> entry : this.mapper.entrySet()) {
+            cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), entry.getValue(), entry.getKey().getAnnotation(ExcelColumn.class).value()));
         }
         Collections.sort(cells, new Comparator<ExcelCell>() {
             @Override
@@ -227,11 +253,12 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     /**
      * 是否要跳过某个实体
      *
+     * @param sheet        当前sheet
      * @param lastRowIndex 上一个行号
      * @param entity       实体信息
      * @return 是否要跳过
      */
-    protected boolean entitySkip(int lastRowIndex, @Nullable T entity) {
+    protected boolean entitySkip(@Nonnull ExcelSheet sheet, int lastRowIndex, @Nullable T entity) {
         //跳过null实体
         return entity == null;
     }
@@ -239,12 +266,13 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     /**
      * 获取实体对应的行信息
      *
+     * @param sheet        当前sheet
      * @param lastRowIndex 上一个行号
      * @param entity       实体信息
      * @return 实体对应的行信息
      */
     @Nullable
-    protected ExcelRow entityRow(int lastRowIndex, @Nullable T entity) {
+    protected ExcelRow entityRow(@Nonnull ExcelSheet sheet, int lastRowIndex, @Nullable T entity) {
         ExcelRow excelRow = new ExcelRow(sheet.getShtIndex(), lastRowIndex + 1);
         excelRow.setColFirst(this.colFirst);
         excelRow.setColLast(this.colLast);
@@ -254,26 +282,27 @@ public abstract class SimpleSheetProvider<T> implements ExcelWriter.Provider {
     /**
      * 获取实体对应的单元格列表
      *
+     * @param sheet  当前sheet
      * @param row    实体对应的行信息
      * @param entity 实体信息
      * @return 实体对应的单元格列表
      * @throws Exception 转换时可能发生异常
      */
     @Nonnull
-    protected List<ExcelCell> entityCells(@Nonnull ExcelRow row, @Nullable T entity) throws Exception {
+    protected List<ExcelCell> entityCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nullable T entity) throws Exception {
         if (entity == null) {
             return new LinkedList<>();
         } else {
             List<ExcelCell> cells = new LinkedList<>();
-            for (Map.Entry<Field, Integer> entry : this.fMapper.entrySet()) {
+            for (Map.Entry<Field, Integer> entry : this.mapper.entrySet()) {
                 Field field = entry.getKey();
-                Converter converter = cMapper.get(field);
+                Converter converter = converters.get(field);
                 if (converter == null) {
                     converter = field.getAnnotation(ExcelColumn.class).converter().newInstance();
-                    cMapper.put(field, converter);
+                    converters.put(field, converter);
                 }
                 try {
-                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), fMapper.get(field), converter.obj2str(field, field.get(entity))));
+                    cells.add(new ExcelCell(sheet.getShtIndex(), row.getRowIndex(), mapper.get(field), converter.obj2str(field, field.get(entity))));
                 } catch (Exception e) {
                     if (mismatchPolicy() == Converter.MismatchPolicy.Throw) {
                         throw e;

@@ -22,7 +22,7 @@ public @interface ExcelColumn {
 
     /**
      * 对应excel中的列序号，从0开始。
-     * 默认为-1，当所有注解列序号都是-1时，将开启自动寻列模式，根据title和sheet第一行单元格内的文字自动匹配列和成员域。
+     * 默认为-1，将开启自动寻列模式，根据value()和Excel中的标题行内的匹配，来决定index的值。
      *
      * @return 对应excel中的列序号
      */

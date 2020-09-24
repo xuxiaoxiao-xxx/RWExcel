@@ -6,8 +6,6 @@ import me.xuxiaoxiao.rwexcel.ExcelSheet;
 import me.xuxiaoxiao.rwexcel.reader.ExcelReader;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,45 +16,35 @@ import java.util.List;
  *
  * @author XXX
  */
-public abstract class SimpleExcelListener implements ExcelReader.Listener {
-    private final ArrayList<SimpleSheetListener<?>> listeners = new ArrayList<>();
+public class SimpleExcelListener implements ExcelReader.Listener {
+    private final SimpleSheetListener<?>[] listeners;
+    private volatile SimpleSheetListener<?> current;
 
-    private ExcelSheet sheet = null;
+    public SimpleExcelListener(SimpleSheetListener<?>[] listeners) {
+        this.listeners = listeners;
+    }
 
     @Override
     public final void onSheetStart(@Nonnull ExcelSheet sheet) {
-        this.sheet = sheet;
-        while (this.sheet.getShtIndex() >= this.listeners.size()) {
-            this.listeners.add(sheetListener(this.sheet));
+        if (sheet.getShtIndex() >= 0 && sheet.getShtIndex() < this.listeners.length) {
+            this.current = this.listeners[sheet.getShtIndex()];
         }
-        SimpleSheetListener<?> sheetListener = this.listeners.get(this.sheet.getShtIndex());
-        if (sheetListener != null) {
-            sheetListener.onSheetStart(this.sheet);
+        if (this.current != null) {
+            this.current.onSheetStart(sheet);
         }
     }
 
     @Override
     public final void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells) {
-        SimpleSheetListener<?> sheetListener = this.listeners.get(this.sheet.getShtIndex());
-        if (sheetListener != null) {
-            sheetListener.onRow(sheet, row, cells);
+        if (this.current != null) {
+            this.current.onRow(sheet, row, cells);
         }
     }
 
     @Override
     public final void onSheetEnd(@Nonnull ExcelSheet sheet) {
-        SimpleSheetListener<?> sheetListener = this.listeners.get(this.sheet.getShtIndex());
-        if (sheetListener != null) {
-            sheetListener.onSheetEnd(this.sheet);
+        if (this.current != null) {
+            this.current.onSheetEnd(sheet);
         }
     }
-
-    /**
-     * 获取对应sheet的监听器
-     *
-     * @param sheet sheet信息
-     * @return 对应sheet的监听器
-     */
-    @Nullable
-    public abstract SimpleSheetListener<?> sheetListener(@Nonnull ExcelSheet sheet);
 }

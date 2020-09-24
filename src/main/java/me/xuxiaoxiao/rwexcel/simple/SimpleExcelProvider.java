@@ -7,7 +7,6 @@ import me.xuxiaoxiao.rwexcel.writer.ExcelWriter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,8 +18,13 @@ import java.util.List;
  *
  * @author XXX
  */
-public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
-    private final ArrayList<SimpleSheetProvider<?>> providers = new ArrayList<>();
+public class SimpleExcelProvider implements ExcelWriter.Provider {
+    private final SimpleSheetProvider<?>[] providers;
+    private volatile SimpleSheetProvider<?> current;
+
+    public SimpleExcelProvider(SimpleSheetProvider<?>[] providers) {
+        this.providers = providers;
+    }
 
     @Nonnull
     @Override
@@ -31,9 +35,11 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
     @Nullable
     @Override
     public ExcelSheet provideSheet(int lastSheetIndex) {
-        if (lastSheetIndex < 0) {
-            return new ExcelSheet(0, "Sheet1");
+        if (lastSheetIndex + 1 >= 0 && lastSheetIndex + 1 < providers.length) {
+            this.current = providers[lastSheetIndex + 1];
+            return this.current.provideSheet(lastSheetIndex);
         } else {
+            this.current = null;
             return null;
         }
     }
@@ -41,12 +47,8 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
     @Nullable
     @Override
     public final ExcelRow provideRow(@Nonnull ExcelSheet sheet, int lastRowIndex) {
-        while (sheet.getShtIndex() >= this.providers.size()) {
-            this.providers.add(sheetProvider(sheet));
-        }
-        SimpleSheetProvider<?> sheetProvider = this.providers.get(sheet.getShtIndex());
-        if (sheetProvider != null) {
-            return sheetProvider.provideRow(sheet, lastRowIndex);
+        if (this.current != null) {
+            return current.provideRow(sheet, lastRowIndex);
         } else {
             return null;
         }
@@ -55,20 +57,10 @@ public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
     @Nonnull
     @Override
     public final List<ExcelCell> provideCells(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row) {
-        SimpleSheetProvider<?> sheetProvider = this.providers.get(sheet.getShtIndex());
-        if (sheetProvider != null) {
-            return sheetProvider.provideCells(sheet, row);
+        if (this.current != null) {
+            return this.current.provideCells(sheet, row);
         } else {
             return Collections.emptyList();
         }
     }
-
-    /**
-     * 获取对应sheet的数据源
-     *
-     * @param sheet sheet信息
-     * @return 对应sheet的数据源
-     */
-    @Nullable
-    public abstract SimpleSheetProvider<?> sheetProvider(ExcelSheet sheet);
 }

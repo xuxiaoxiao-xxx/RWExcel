@@ -12,9 +12,7 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * 简单Sheet监听器，将sheet数据解析成List
@@ -25,83 +23,179 @@ import java.util.TreeMap;
  * @author XXX
  */
 public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
-    private final List<T> list;
-
-    @Getter
-    private final ExcelSheet sheet;
-    @Getter
-    private final int cache;
+    /**
+     * 模板类型
+     */
     @Getter
     private final Class<T> clazz;
+    /**
+     * 缓存大小
+     */
     @Getter
-    private final boolean adaptive;
-
-    private int rowStart = 0, rowEnd = 0;
-
-    protected final TreeMap<Integer, Field> fMapper = new TreeMap<>();
-    protected final TreeMap<Integer, Converter> cMapper = new TreeMap<>();
+    private final int cache;
 
     /**
-     * 创建一个sheet监听器，指定默认100的列表缓存大小
-     *
-     * @param sheet 当前sheet信息
+     * Excel列号和Java类属性的映射关系
      */
-    public SimpleSheetListener(ExcelSheet sheet) {
-        this(sheet, 100);
+    @Getter
+    private final TreeMap<Integer, Field> mapper = new TreeMap<>();
+    /**
+     * Excel列号和属性转换器的映射关系
+     */
+    @Getter
+    private final TreeMap<Integer, Converter> converters = new TreeMap<>();
+    /**
+     * 所有的标题行
+     */
+    private final List<List<ExcelCell>> titles = new ArrayList<>();
+    /**
+     * 当前批次缓存数据
+     */
+    private final List<T> list = new ArrayList<>();
+    /**
+     * 当前处理的开始行（包含），和结束行（不包含）
+     */
+    private int rowStart = 0, rowEnd = 0;
+
+    /**
+     * 创建一个sheet监听器，指定列表缓存大小为100
+     */
+    public SimpleSheetListener() {
+        this(100);
     }
 
     /**
      * 创建一个sheet监听器，指定列表缓存大小
      *
-     * @param sheet 当前sheet信息
      * @param cache 缓存大小
      */
-    public SimpleSheetListener(ExcelSheet sheet, int cache) {
-        this.list = new ArrayList<>(cache);
-        this.sheet = sheet;
+    public SimpleSheetListener(int cache) {
         this.cache = cache;
-        this.clazz = entityClass();
+        this.clazz = detectEntityClass();
+    }
 
-        boolean adaptive = true;
+    /**
+     * 重置监听器，以便监听器重复使用
+     */
+    private void reset() {
+        titles.clear();
+        mapper.clear();
+        list.clear();
+        rowStart = 0;
+        rowEnd = 0;
+    }
+
+    /**
+     * 处理并清空缓存
+     */
+    private void flush() {
+        if (!list.isEmpty()) {
+            onList(rowStart, rowEnd, list);
+            list.clear();
+        }
+        rowStart = rowEnd;
+    }
+
+    /**
+     * 获取模板类型的class对象
+     *
+     * @return 模板类型的class对象
+     */
+    @Nonnull
+    @SuppressWarnings("unchecked")
+    protected Class<T> detectEntityClass() {
+        Class<?> listenerClass = this.getClass();
+        if (listenerClass.getGenericSuperclass() instanceof ParameterizedType) {
+            Type[] typeArguments = ((ParameterizedType) listenerClass.getGenericSuperclass()).getActualTypeArguments();
+            if (typeArguments != null && typeArguments.length > 0) {
+                Type paramType = typeArguments[0];
+                if (paramType instanceof Class) {
+                    return (Class<T>) paramType;
+                }
+            }
+        }
+        throw new IllegalStateException("未能自动识别SimpleExcelListener的模板参数，请勿多级继承SimpleExcelListener，或自行实现detectEntityClass方法");
+    }
+
+    /**
+     * 获取Excel列号和Java类属性的映射关系
+     *
+     * @param titles 所有标题行
+     * @return Excel列号和Java类属性的映射关系
+     */
+    @Nonnull
+    protected Map<Integer, Field> detectEntityMapper(List<List<ExcelCell>> titles) {
+        Map<Integer, Field> map = new HashMap<>();
+        List<ExcelCell> titleRow = titles.size() > 0 ? titles.get(titles.size() - 1) : new LinkedList<ExcelCell>();
+
         for (Class<?> i = this.clazz; !i.equals(Object.class); i = i.getSuperclass()) {
             Field[] fields = i.getDeclaredFields();
             for (Field field : fields) {
                 if (field.isAnnotationPresent(ExcelColumn.class)) {
                     field.setAccessible(true);
 
+                    int index = -1;
                     ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
                     if (excelColumn.index() >= 0) {
-                        adaptive = false;
-                        if (fMapper.containsKey(excelColumn.index())) {
-                            throw new IllegalArgumentException(String.format("ExcelColumn列冲突，有多个序号为 %d 的列", excelColumn.index()));
-                        } else {
-                            fMapper.put(excelColumn.index(), field);
+                        //模板类型class设置了index，将映射关系存入到mapper中
+                        index = excelColumn.index();
+                    } else {
+                        //模板类型class没有设置index，根据列名将映射关系存入到mapper中
+                        for (ExcelCell titleCell : titleRow) {
+                            if (excelColumn.value().equals(titleCell.getStrValue())) {
+                                index = titleCell.getColIndex();
+                                break;
+                            }
                         }
-                    } else if (!adaptive) {
-                        throw new IllegalArgumentException(String.format("ExcelColumn的列 %s 未设置序号", excelColumn.value()));
+                    }
+
+                    if (index >= 0) {
+                        if (map.containsKey(index)) {
+                            throw new IllegalArgumentException(String.format("%s 中有多个属性映射到了Excel的第 %d 列", this.clazz.getSimpleName(), index));
+                        } else {
+                            map.put(index, field);
+                        }
                     }
                 }
             }
         }
-        this.adaptive = adaptive;
+        return map;
     }
 
     @Override
     public final void onSheetStart(@Nonnull ExcelSheet sheet) {
+        reset();
     }
 
     @Override
     public final void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells) {
-        if (row.getRowIndex() < titleRowCount()) {
-            titleRow(row.getRowIndex(), row, cells);
-            rowStart = row.getRowIndex() + 1;
-            rowEnd = row.getRowIndex() + 1;
-        } else {
-            while (rowEnd < row.getRowIndex()) {
+        if (handleSheet(sheet)) {
+            if (row.getRowIndex() < titleRowCount()) {
+                //当前行是标题行
+                titles.add(cells);
+                rowStart = row.getRowIndex() + 1;
+                rowEnd = row.getRowIndex() + 1;
+            } else {
+                if (mapper.isEmpty()) {
+                    mapper.putAll(detectEntityMapper(titles));
+                }
+                while (rowEnd < row.getRowIndex()) {
+                    try {
+                        //处理空白行
+                        if (!rowSkip(rowEnd, null, null)) {
+                            list.add(rowEntity(rowEnd, null, null));
+                            if (list.size() >= cache) {
+                                flush();
+                            }
+                        }
+                        rowEnd++;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 try {
-                    //处理空白行
-                    if (!rowSkip(rowEnd, null, null)) {
-                        list.add(rowEntity(rowEnd, null, null));
+                    if (!rowSkip(row.getRowIndex(), row, cells)) {
+                        list.add(rowEntity(row.getRowIndex(), row, cells));
                         if (list.size() >= cache) {
                             flush();
                         }
@@ -110,17 +204,6 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-            }
-            try {
-                if (!rowSkip(row.getRowIndex(), row, cells)) {
-                    list.add(rowEntity(row.getRowIndex(), row, cells));
-                    if (list.size() >= cache) {
-                        flush();
-                    }
-                }
-                rowEnd++;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -131,37 +214,13 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
     }
 
     /**
-     * 获取实体类的class对象
+     * 是否要处理某个sheet
      *
-     * @return 实体类的class对象
+     * @param sheet sheet
+     * @return 是否要处理
      */
-    @Nonnull
-    protected Class<T> entityClass() {
-        if (this.clazz == null) {
-            Class<?> listenerClass = this.getClass();
-            if (listenerClass.getGenericSuperclass() instanceof ParameterizedType) {
-                Type[] typeArguments = ((ParameterizedType) listenerClass.getGenericSuperclass()).getActualTypeArguments();
-                if (typeArguments != null && typeArguments.length > 0) {
-                    Type paramType = typeArguments[0];
-                    if (paramType instanceof Class) {
-                        return (Class<T>) paramType;
-                    }
-                }
-            }
-            throw new IllegalStateException("未能自动识别SimpleExcelListener的模板参数");
-        } else {
-            return this.clazz;
-        }
-    }
-
-    /**
-     * 转换异常的处理方法
-     *
-     * @return 转换异常的处理方法
-     */
-    @Nonnull
-    public Converter.MismatchPolicy mismatchPolicy() {
-        return Converter.MismatchPolicy.Throw;
+    protected boolean handleSheet(@Nonnull ExcelSheet sheet) {
+        return true;
     }
 
     /**
@@ -174,40 +233,13 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
     }
 
     /**
-     * 标题行解析
+     * 列转换属性时 发生异常的处理策略
      *
-     * @param rowIndex 行号
-     * @param row      标题行信息
-     * @param cells    标题行单元格信息
+     * @return 处理策略
      */
-    protected void titleRow(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) {
-        if (rowIndex == 0 && adaptive && row != null && cells != null && !cells.isEmpty()) {
-            //如果是自动寻列模式，要找一下属性和列的对应关系
-            for (Class<?> i = this.clazz; !i.equals(Object.class); i = i.getSuperclass()) {
-                Field[] fields = i.getDeclaredFields();
-                for (Field field : fields) {
-                    if (field.isAnnotationPresent(ExcelColumn.class)) {
-                        ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
-                        for (ExcelCell cell : cells) {
-                            if (excelColumn.value().equals(cell.getStrValue())) {
-                                if (fMapper.containsKey(cell.getColIndex())) {
-                                    throw new IllegalArgumentException(String.format("ExcelColumn自动寻列冲突，有多个成员域title为 %s", excelColumn.value()));
-                                } else {
-                                    fMapper.put(cell.getColIndex(), field);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void flush() {
-        onList(rowStart, rowEnd, list);
-        rowStart = rowEnd;
-        list.clear();
+    @Nonnull
+    public Converter.MismatchPolicy mismatchPolicy() {
+        return Converter.MismatchPolicy.Throw;
     }
 
     /**
@@ -220,7 +252,7 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
      * @throws Exception 判断过程中出现的异常
      */
     protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
-        //第一行和空白行都要跳过
+        //标题行和空白行都要跳过
         return rowIndex < titleRowCount() || row == null;
     }
 
@@ -240,12 +272,12 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
         } else {
             T entity = this.clazz.newInstance();
             for (ExcelCell cell : cells) {
-                Field field = fMapper.get(cell.getColIndex());
+                Field field = mapper.get(cell.getColIndex());
                 if (field != null) {
-                    Converter converter = cMapper.get(cell.getColIndex());
+                    Converter converter = converters.get(cell.getColIndex());
                     if (converter == null) {
                         converter = field.getAnnotation(ExcelColumn.class).converter().newInstance();
-                        cMapper.put(cell.getColIndex(), converter);
+                        converters.put(cell.getColIndex(), converter);
                     }
                     try {
                         field.setAccessible(true);

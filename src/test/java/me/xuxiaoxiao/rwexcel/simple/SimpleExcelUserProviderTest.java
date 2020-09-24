@@ -22,90 +22,73 @@ public class SimpleExcelUserProviderTest {
         ByteArrayOutputStream baOutStream = new ByteArrayOutputStream();
 
         ExcelWriter excelWriter = new ExcelUserWriter();
-        excelWriter.write(baOutStream, new SimpleExcelProvider() {
-            @Nonnull
+        SimpleSheetProvider<?> provider1 = new SimpleSheetProvider<TestEntity>() {
             @Override
-            public ExcelWriter.Version version() {
-                return ExcelWriter.Version.XLS;
+            public ExcelSheet provideSheet(int lastSheetIndex) {
+                return new ExcelSheet(0, "Sheet1");
             }
 
             @Nullable
             @Override
-            public ExcelSheet provideSheet(int lastSheetIndex) {
-                if (lastSheetIndex == -1) {
-                    return new ExcelSheet(0, "Sheet1");
-                } else if (lastSheetIndex == 0) {
-                    return new ExcelSheet(1, "Sheet2");
+            public List<TestEntity> queryList(int lastRowIndex) {
+                if (lastRowIndex < titleRowCount()) {
+                    List<TestEntity> entities = new ArrayList<>(100);
+                    TestEntity entity1 = new TestEntity();
+                    entity1.setColStr("str");
+                    entity1.setColInt(1);
+                    entity1.setColDbl(2);
+                    entity1.setColLng(3);
+                    entity1.setColFlt(4);
+                    entity1.setColBol(true);
+                    try {
+                        entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2019-01-01"));
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    entities.add(entity1);
+                    return entities;
                 } else {
                     return null;
                 }
             }
+        };
+        SimpleSheetProvider<?> provider2 = new SimpleSheetProvider<TestEntity>() {
+            @Override
+            public ExcelSheet provideSheet(int lastSheetIndex) {
+                return new ExcelSheet(1, "Sheet2");
+            }
 
             @Override
-            public SimpleSheetProvider<TestEntity> sheetProvider(ExcelSheet sheet) {
-                if (sheet.getShtIndex() == 0) {
-                    return new SimpleSheetProvider<TestEntity>(sheet) {
+            protected boolean entitySkip(@Nonnull ExcelSheet sheet, int lastRowIndex, @Nullable TestEntity entity) {
+                return false;
+            }
 
-                        @Nullable
-                        @Override
-                        public List<TestEntity> queryList(int lastRowIndex) {
-                            if (lastRowIndex < titleRowCount()) {
-                                List<TestEntity> entities = new ArrayList<>(100);
-                                TestEntity entity1 = new TestEntity();
-                                entity1.setColStr("str");
-                                entity1.setColInt(1);
-                                entity1.setColDbl(2);
-                                entity1.setColLng(3);
-                                entity1.setColFlt(4);
-                                entity1.setColBol(true);
-                                try {
-                                    entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2019-01-01"));
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
-                                }
-                                entities.add(entity1);
-                                return entities;
-                            } else {
-                                return null;
-                            }
-                        }
-                    };
+            @Nullable
+            @Override
+            public List<TestEntity> queryList(int lastRowIndex) {
+                if (lastRowIndex < titleRowCount()) {
+                    List<TestEntity> entities = new ArrayList<>(100);
+                    entities.add(null);
+                    TestEntity entity1 = new TestEntity();
+                    entity1.setColStr("str1");
+                    entity1.setColInt(2);
+                    entity1.setColDbl(3);
+                    entity1.setColLng(4);
+                    entity1.setColFlt(5);
+                    entity1.setColBol(false);
+                    try {
+                        entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2020-01-01"));
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    entities.add(entity1);
+                    return entities;
                 } else {
-                    return new SimpleSheetProvider<TestEntity>(sheet) {
-
-                        @Override
-                        protected boolean entitySkip(int lastRowIndex, @Nullable TestEntity entity) {
-                            return false;
-                        }
-
-                        @Nullable
-                        @Override
-                        public List<TestEntity> queryList(int lastRowIndex) {
-                            if (lastRowIndex < titleRowCount()) {
-                                List<TestEntity> entities = new ArrayList<>(100);
-                                entities.add(null);
-                                TestEntity entity1 = new TestEntity();
-                                entity1.setColStr("str1");
-                                entity1.setColInt(2);
-                                entity1.setColDbl(3);
-                                entity1.setColLng(4);
-                                entity1.setColFlt(5);
-                                entity1.setColBol(false);
-                                try {
-                                    entity1.setColDat(new SimpleDateFormat("yyyy-MM-dd").parse("2020-01-01"));
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
-                                }
-                                entities.add(entity1);
-                                return entities;
-                            } else {
-                                return null;
-                            }
-                        }
-                    };
+                    return null;
                 }
             }
-        });
+        };
+        excelWriter.write(baOutStream, new SimpleExcelProvider(new SimpleSheetProvider[]{provider1, provider2}));
 
         ExcelReader excelReader = new ExcelStreamReader();
         excelReader.read(new ByteArrayInputStream(baOutStream.toByteArray()), new SimpleExcelStreamListenerTest.TestSheetsListener());

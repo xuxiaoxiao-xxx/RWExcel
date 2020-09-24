@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>me.xuxiaoxiao</groupId>
     <artifactId>rwexcel</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>RWExcel</name>
     <description>Excel流式读取/写入框架</description>
     <url>https://github.com/xuxiaoxiao-xxx/RWExcel</url>
@@ -62,7 +62,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.10</version>
+            <version>1.18.12</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

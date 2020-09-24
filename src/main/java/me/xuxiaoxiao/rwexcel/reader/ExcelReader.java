@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * Excel解析类
+ * Excel解析器接口类
  * <ul>
  * <li>[2019/9/12 18:22]XXX：初始创建</li>
  * </ul>
@@ -32,17 +32,17 @@ public interface ExcelReader {
      */
     interface Listener {
         /**
-         * 处理sheet开头
+         * sheet开始处理的回调函数
          *
          * @param sheet sheet信息
          */
         void onSheetStart(@Nonnull ExcelSheet sheet);
 
         /**
-         * 处理行
+         * 处理行的回调函数
          * <ul>
          *     <li>保证按顺序处理行，行号小的先处理，列号小的先处理</li>
-         *     <li>不保证连续，遇到空行会跳过，遇到空单元格（BlankRecord）会跳过</li>
+         *     <li>不保证连续，遇到空行可能会跳过，遇到空单元格（BlankRecord）会跳过</li>
          *     <li>行内保证至少有一个单元格</li>
          *     <li>保证读取单元格的值不为null</li>
          * </ul>
@@ -54,7 +54,7 @@ public interface ExcelReader {
         void onRow(@Nonnull ExcelSheet sheet, @Nonnull ExcelRow row, @Nonnull List<ExcelCell> cells);
 
         /**
-         * 处理sheet结尾
+         * sheet处理结束的回调函数
          *
          * @param sheet sheet信息
          */

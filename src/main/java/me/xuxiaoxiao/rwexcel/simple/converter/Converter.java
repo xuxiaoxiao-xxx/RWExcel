@@ -100,7 +100,7 @@ public class Converter {
     }
 
     /**
-     * 将日期字符串转换成相应的date对象，线程安全
+     * 将日期字符串转换成相应的date对象
      *
      * @param format  格式字符串
      * @param dateStr 日期字符串
@@ -124,7 +124,7 @@ public class Converter {
     }
 
     /**
-     * 将date对象转换成相应格式的字符串，线程安全
+     * 将date对象转换成相应格式的字符串
      *
      * @param format 格式字符串
      * @param date   date对象
