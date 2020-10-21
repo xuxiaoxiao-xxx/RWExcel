@@ -10,7 +10,7 @@ import org.apache.poi.ooxml.util.SAXHelper;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.filesystem.FileMagic;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
-import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.eventusermodel.XSSFReader;
 import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
@@ -20,7 +20,9 @@ import org.xml.sax.XMLReader;
 
 import javax.annotation.Nonnull;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -61,7 +63,7 @@ public class ExcelStreamReader implements ExcelReader {
                         listener.onSheetStart(sheet);
 
                         XMLReader sheetParser = SAXHelper.newXMLReader();
-                        sheetParser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), reader.getSharedStringsTable(), new XlsxScanner(sheet, listener), new DataFormatter(), false));
+                        sheetParser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), reader.getSharedStringsTable(), new XlsxScanner(sheet, listener), new ExcelReader.Formatter(), false));
                         sheetParser.parse(new InputSource(stream));
                     }
                 }
@@ -73,6 +75,7 @@ public class ExcelStreamReader implements ExcelReader {
     }
 
     private static class XlsScanner implements HSSFListener {
+        private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
         private Listener listener;
         private FormatTrackingHSSFListener formatListener;
 
@@ -224,7 +227,18 @@ public class ExcelStreamReader implements ExcelReader {
                         break;
                     case NumberRecord.sid:
                         NumberRecord numberRecord = (NumberRecord) record;
-                        valList.add(formatListener.formatNumberDateCell(numberRecord));
+                        String formatValue = formatListener.formatNumberDateCell(numberRecord);
+
+                        int formatIndex = formatListener.getFormatIndex(numberRecord);
+                        String formatString = formatListener.getFormatString(numberRecord);
+                        if (DateUtil.isADateFormat(formatIndex, formatString)) {
+                            if (DateUtil.isValidExcelDate(numberRecord.getValue())) {
+                                //是日期类型值
+                                Date date = DateUtil.getJavaDate(numberRecord.getValue(), false);
+                                formatValue = sdf.format(date);
+                            }
+                        }
+                        valList.add(formatValue);
                         break;
                     case RKRecord.sid:
                         RKRecord rkRecord = (RKRecord) record;

@@ -29,7 +29,7 @@ public class ExcelUserReader implements ExcelReader {
 
             listener.onSheetStart(excelSheet);
 
-            DataFormatter formatter = new DataFormatter();
+            ExcelReader.Formatter formatter = new ExcelReader.Formatter();
             for (int j = sheet.getFirstRowNum(); j < sheet.getLastRowNum() + 1; j++) {
                 Row row = sheet.getRow(j);
                 if (row != null) {

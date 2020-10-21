@@ -29,6 +29,21 @@ public class SimpleExcelStreamListenerTest {
         });
     }
 
+    @Test
+    public void testSimpleSheetListener2() throws Exception {
+        ExcelReader reader = new ExcelStreamReader();
+        reader.read(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleAdaptive.xlsx"), new SimpleSheetListener<TestEntity>() {
+
+            @Override
+            protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                for (TestEntity entity : list) {
+                    System.out.println("解析到实体：" + entity);
+                }
+            }
+        });
+    }
+
     public static final class TestSheetsListener extends SimpleExcelListener {
 
         public TestSheetsListener() {
@@ -181,8 +196,8 @@ public class SimpleExcelStreamListenerTest {
             protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
                 System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
                 assert rowStart == 1;
-                assert rowEnd == 2;
-                assert list.size() == 1;
+                assert rowEnd == 7;
+                assert list.size() == 6;
                 TestEntity entity = list.get(0);
                 System.out.println("解析到实体" + entity);
                 assert entity.getColStr().equals("str");

@@ -3,9 +3,12 @@ package me.xuxiaoxiao.rwexcel.reader;
 import me.xuxiaoxiao.rwexcel.ExcelCell;
 import me.xuxiaoxiao.rwexcel.ExcelRow;
 import me.xuxiaoxiao.rwexcel.ExcelSheet;
+import org.apache.poi.ss.formula.ConditionalFormattingEvaluator;
+import org.apache.poi.ss.usermodel.*;
 
 import javax.annotation.Nonnull;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 /**
@@ -60,4 +63,28 @@ public interface ExcelReader {
          */
         void onSheetEnd(@Nonnull ExcelSheet sheet);
     }
+
+    class Formatter extends DataFormatter {
+        private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
+        @Override
+        public String formatRawCellContents(double value, int formatIndex, String formatString, boolean use1904Windowing) {
+            String result = super.formatRawCellContents(value, formatIndex, formatString, use1904Windowing);
+            if (DateUtil.isADateFormat(formatIndex, formatString)) {
+                if (DateUtil.isValidExcelDate(value)) {
+                    return sdf.format(DateUtil.getJavaDate(value, use1904Windowing));
+                }
+            }
+            return result;
+        }
+
+        public String formatCellValue(Cell cell, FormulaEvaluator evaluator, ConditionalFormattingEvaluator cfEvaluator) {
+            String result = super.formatCellValue(cell, evaluator, cfEvaluator);
+            if (cell != null && cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell, cfEvaluator)) {
+                return sdf.format(cell.getDateCellValue());
+            }
+            return result;
+        }
+    }
+
 }

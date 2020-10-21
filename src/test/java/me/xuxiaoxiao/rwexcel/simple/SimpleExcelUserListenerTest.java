@@ -14,6 +14,35 @@ import java.util.List;
 import java.util.Objects;
 
 public class SimpleExcelUserListenerTest {
+    @Test
+    public void testSimpleSheetListener() throws Exception {
+        ExcelReader reader = new ExcelUserReader();
+        reader.read(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleAdaptive.xls"), new SimpleSheetListener<TestEntity>() {
+
+            @Override
+            protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                for (TestEntity entity : list) {
+                    System.out.println("解析到实体：" + entity);
+                }
+            }
+        });
+    }
+
+    @Test
+    public void testSimpleSheetListener2() throws Exception {
+        ExcelReader reader = new ExcelUserReader();
+        reader.read(Thread.currentThread().getContextClassLoader().getResourceAsStream("testSimpleAdaptive.xlsx"), new SimpleSheetListener<TestEntity>() {
+
+            @Override
+            protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
+                System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
+                for (TestEntity entity : list) {
+                    System.out.println("解析到实体：" + entity);
+                }
+            }
+        });
+    }
 
     @Test
     public void demo() throws Exception {
@@ -182,8 +211,8 @@ public class SimpleExcelUserListenerTest {
             protected void onList(int rowStart, int rowEnd, @Nonnull List<TestEntity> list) {
                 System.out.println("解析到列表：rowStart=" + rowStart + "，rowEnd=" + rowEnd);
                 assert rowStart == 1;
-                assert rowEnd == 2;
-                assert list.size() == 1;
+                assert rowEnd == 7;
+                assert list.size() == 6;
                 TestEntity entity = list.get(0);
                 System.out.println("解析到实体" + entity);
                 assert entity.getColStr().equals("str");
