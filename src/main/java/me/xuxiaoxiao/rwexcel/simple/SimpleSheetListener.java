@@ -253,7 +253,18 @@ public abstract class SimpleSheetListener<T> implements ExcelReader.Listener {
      */
     protected boolean rowSkip(int rowIndex, @Nullable ExcelRow row, @Nullable List<ExcelCell> cells) throws Exception {
         //标题行和空白行都要跳过
-        return rowIndex < titleRowCount() || row == null;
+        if (rowIndex < titleRowCount()) {
+            return true;
+        } else if (row == null || cells == null || cells.isEmpty()) {
+            return true;
+        } else {
+            for (ExcelCell cell : cells) {
+                if (mapper.get(cell.getColIndex()) != null) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /**

@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>me.xuxiaoxiao</groupId>
     <artifactId>rwexcel</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
     <name>RWExcel</name>
     <description>Excel流式读取/写入框架</description>
     <url>https://github.com/xuxiaoxiao-xxx/RWExcel</url>

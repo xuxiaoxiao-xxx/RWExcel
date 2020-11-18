@@ -16,19 +16,12 @@ import java.util.List;
  *
  * @author XXX
  */
-public class SimpleExcelListener implements ExcelReader.Listener {
-    private final SimpleSheetListener<?>[] listeners;
-    private volatile SimpleSheetListener<?> current;
-
-    public SimpleExcelListener(SimpleSheetListener<?>[] listeners) {
-        this.listeners = listeners;
-    }
+public abstract class SimpleExcelListener implements ExcelReader.Listener {
+    private volatile ExcelReader.Listener current;
 
     @Override
     public final void onSheetStart(@Nonnull ExcelSheet sheet) {
-        if (sheet.getShtIndex() >= 0 && sheet.getShtIndex() < this.listeners.length) {
-            this.current = this.listeners[sheet.getShtIndex()];
-        }
+        this.current = sheetListener(sheet);
         if (this.current != null) {
             this.current.onSheetStart(sheet);
         }
@@ -47,4 +40,6 @@ public class SimpleExcelListener implements ExcelReader.Listener {
             this.current.onSheetEnd(sheet);
         }
     }
+
+    public abstract ExcelReader.Listener sheetListener(ExcelSheet sheet);
 }

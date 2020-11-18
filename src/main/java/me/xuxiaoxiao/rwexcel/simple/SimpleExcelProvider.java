@@ -18,13 +18,8 @@ import java.util.List;
  *
  * @author XXX
  */
-public class SimpleExcelProvider implements ExcelWriter.Provider {
-    private final SimpleSheetProvider<?>[] providers;
+public abstract class SimpleExcelProvider implements ExcelWriter.Provider {
     private volatile SimpleSheetProvider<?> current;
-
-    public SimpleExcelProvider(SimpleSheetProvider<?>[] providers) {
-        this.providers = providers;
-    }
 
     @Nonnull
     @Override
@@ -34,12 +29,11 @@ public class SimpleExcelProvider implements ExcelWriter.Provider {
 
     @Nullable
     @Override
-    public ExcelSheet provideSheet(int lastSheetIndex) {
-        if (lastSheetIndex + 1 >= 0 && lastSheetIndex + 1 < providers.length) {
-            this.current = providers[lastSheetIndex + 1];
+    public final ExcelSheet provideSheet(int lastSheetIndex) {
+        this.current = sheetProvider(lastSheetIndex);
+        if (this.current != null) {
             return this.current.provideSheet(lastSheetIndex);
         } else {
-            this.current = null;
             return null;
         }
     }
@@ -63,4 +57,6 @@ public class SimpleExcelProvider implements ExcelWriter.Provider {
             return Collections.emptyList();
         }
     }
+
+    public abstract SimpleSheetProvider<?> sheetProvider(int lastSheetIndex);
 }
